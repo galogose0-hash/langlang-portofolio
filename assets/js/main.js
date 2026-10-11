@@ -276,23 +276,32 @@
       label.textContent = "Sending...";
       if (submitBtn) submitBtn.disabled = true;
 
+      var payload = {};
+      new FormData(contactForm).forEach(function (value, key) { payload[key] = value; });
+
       fetch("https://api.web3forms.com/submit", {
         method: "POST",
-        headers: { Accept: "application/json" },
-        body: new FormData(contactForm)
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify(payload)
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (data && data.success) {
-            contactForm.classList.add("hidden");
-            contactSuccess.classList.remove("hidden");
-            contactSuccess.classList.add("flex");
-          } else {
-            throw new Error((data && data.message) || "Failed to send");
-          }
+        .then(function (res) {
+          return res.text().then(function (text) {
+            var json = null;
+            try { json = JSON.parse(text); } catch (e) { json = null; }
+            if (res.status === 200 && json && json.success) {
+              contactForm.classList.add("hidden");
+              contactSuccess.classList.remove("hidden");
+              contactSuccess.classList.add("flex");
+            } else {
+              throw new Error(json && json.message ? json.message : "Unexpected response from server (HTTP " + res.status + "). Check your Web3Forms access key.");
+            }
+          });
         })
-        .catch(function () {
-          formError.textContent = "Sorry, something went wrong. Please email langlangsyaban2@gmail.com directly.";
+        .catch(function (err) {
+          formError.textContent = "Sending failed: " + (err && err.message ? err.message : "Network error. Please try again.");
           formError.classList.remove("hidden");
         })
         .finally(function () {
