@@ -135,8 +135,10 @@
 }
 html.dark #starfield { opacity: 1; }
 
-/* --------------------------- Day dragon (light mode only) --------------------------- */
-#dragonLayer {
+/* --------------------------- Day goldfish (light mode only) --------------------------- */
+/* WebGL canvas for the interactive 3D goldfish. Tune the opacity below to make
+   the fish more / less prominent behind the page content. */
+#goldfishLayer {
   position: fixed;
   inset: 0;
   width: 100%;
@@ -146,9 +148,9 @@ html.dark #starfield { opacity: 1; }
   opacity: 0;
   transition: opacity 1s ease;
 }
-html:not(.dark) #dragonLayer { opacity: 0.22; }
+html:not(.dark) #goldfishLayer { opacity: 0.8; }
 @media (max-width: 767px) {
-  html:not(.dark) #dragonLayer { opacity: 0.16; }
+  html:not(.dark) #goldfishLayer { opacity: 0.62; }
 }
 
 /* Content stays above the fixed background canvases */
