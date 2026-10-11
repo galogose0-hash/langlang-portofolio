@@ -68,6 +68,13 @@ export default function ChessApp() {
 
   return (
     <div className="app-root">
+      <a className="back-link" href="../../index.html">
+        <span className="arrow" aria-hidden="true">
+          {"\u2190"}
+        </span>
+        <span>Back to Portfolio</span>
+      </a>
+
       <div className="canvas-layer">
         <GameCanvas
           pieces={game.pieces}

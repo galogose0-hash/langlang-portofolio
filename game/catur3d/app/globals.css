@@ -48,6 +48,41 @@ button {
   inset: 0;
 }
 
+.back-link {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  background: var(--panel);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.back-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.back-link .arrow {
+  font-size: 15px;
+  line-height: 1;
+}
+
 .canvas-layer {
   position: absolute;
   inset: 0;
@@ -106,7 +141,7 @@ button {
 /* Top bar */
 .topbar {
   position: absolute;
-  top: 18px;
+  top: 64px;
   left: 18px;
   right: 18px;
   display: flex;
@@ -481,14 +516,10 @@ button {
   box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.14);
 }
 
-.mode-card .emoji {
-  font-size: 24px;
-}
-
 .mode-card .title {
   font-size: 15px;
   font-weight: 700;
-  margin: 8px 0 3px;
+  margin: 0 0 3px;
 }
 
 .mode-card .desc {

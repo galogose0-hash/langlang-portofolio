@@ -5,13 +5,11 @@ import { useState } from "react";
 const MODES = [
   {
     id: "pvc",
-    emoji: "\u{1F916}",
     title: "Player vs AI",
     desc: "Challenge the computer. Pick a difficulty and your colour.",
   },
   {
     id: "pvp",
-    emoji: "\u{1F465}",
     title: "2 Players",
     desc: "Local pass-and-play on the same screen.",
   },
@@ -63,7 +61,6 @@ export default function PreGameModal({ open, canClose, initial, onStart, onClose
               className={`mode-card${mode === m.id ? " selected" : ""}`}
               onClick={() => setMode(m.id)}
             >
-              <div className="emoji">{m.emoji}</div>
               <div className="title">{m.title}</div>
               <div className="desc">{m.desc}</div>
             </button>
