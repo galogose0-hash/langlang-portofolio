@@ -1,0 +1,159 @@
+/* ==========================================================================
+   Langlang Portfolio - Custom Styles
+   1. Base & utilities   2. Animations   3. Components   4. Day/Night theme
+   ========================================================================== */
+
+/* --------------------------- Base & utilities --------------------------- */
+    body { background-color: #FBF9F5; }
+    .reveal { opacity: 0; transform: translateY(30px); transition: opacity .7s ease, transform .7s cubic-bezier(.16,.84,.44,1); }
+    .reveal.is-visible { opacity: 1; transform: none; }
+    .blob { border-radius: 52% 48% 44% 56% / 46% 52% 48% 54%; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .hand-arrow { stroke-linecap: round; stroke-linejoin: round; }
+    @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .floaty { animation: floaty 5s ease-in-out infinite; }
+    .floaty-slow { animation: floaty 7s ease-in-out infinite; }
+
+    /* Scroll progress bar */
+    #scrollProgress { transform-origin: 0 50%; }
+
+    /* Cursor glow */
+    #cursorGlow {
+      width: 340px; height: 340px; border-radius: 9999px;
+      background: radial-gradient(circle, rgba(212,226,215,0.55) 0%, rgba(212,226,215,0) 70%);
+      position: fixed; top: 0; left: 0; pointer-events: none; z-index: 0;
+      transform: translate(-50%, -50%); transition: opacity .4s ease;
+      opacity: 0;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      body.has-cursor #cursorGlow { opacity: 1; }
+    }
+
+    /* Tilt card: transition + preserve 3d handled inline */
+    .tilt { transform-style: preserve-3d; will-change: transform; }
+
+    /* Marquee */
+    @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .marquee-track { animation: marquee 28s linear infinite; }
+    .marquee-track:hover { animation-play-state: paused; }
+
+    /* Project mockup zoom */
+    .zoom-able > * { transition: transform .8s cubic-bezier(.16,.84,.44,1); }
+    .group:hover .zoom-able > * { transform: scale(1.07); }
+
+    /* Back to top */
+    #toTop { opacity: 0; pointer-events: none; transform: translateY(12px); }
+    #toTop.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+    /* Magnetic buttons */
+    .magnetic { will-change: transform; }
+
+    /* Contact modal */
+    #contactModal { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .35s ease, visibility .35s ease; }
+    #contactModal.open { opacity: 1; visibility: visible; pointer-events: auto; }
+    #contactPanel { transform: translateY(18px) scale(.97); opacity: 0; transition: transform .4s cubic-bezier(.16,.84,.44,1), opacity .4s ease; }
+    #contactModal.open #contactPanel { transform: none; opacity: 1; }
+
+    /* Mobile menu drawer */
+    #mobileMenu { max-height: 0; opacity: 0; transform: translateY(-10px); }
+    #mobileMenu.open { max-height: 520px; opacity: 1; transform: translateY(0); }
+
+    /* Smooth hide for floating badges on tiny screens */
+    @media (max-width: 380px) { .hide-xs { display: none; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition-duration: .01ms !important; }
+      html { scroll-behavior: auto; }
+    }
+
+/* --------------------------- Day / Night theme --------------------------- */
+    /* ============ DAY / NIGHT THEME ============ */
+    html { color-scheme: light; }
+    html.dark { color-scheme: dark; }
+    body { transition: background-color .4s ease, color .4s ease; }
+
+    /* Page & surfaces */
+    html.dark body { background-color: #12151A; }
+    .dark .bg-cream { background-color: #12151A; }
+    .dark .bg-cream\/85 { background-color: rgba(18,21,26,.82); }
+    .dark .bg-cream-deep { background-color: #1A1F26; }
+    .dark .bg-cream-deep\/90 { background-color: rgba(26,31,38,.9); }
+
+    .dark .bg-white { background-color: #1B2027; }
+    .dark .bg-white\/80 { background-color: rgba(27,32,39,.8); }
+    .dark .bg-white\/95 { background-color: rgba(27,32,39,.95); }
+    .dark .hover\:bg-white:hover { background-color: #232A33; }
+
+    .dark .bg-sage-light { background-color: #232B25; }
+    .dark .bg-sage-light\/60 { background-color: rgba(35,43,37,.6); }
+    .dark .hover\:bg-sage-light:hover { background-color: #26302A; }
+    .dark .bg-sage { background-color: #1E2A22; }
+    .dark .hover\:bg-sage:hover { background-color: #26302A; }
+    .dark .bg-sagepastel { background-color: #212A23; }
+    .dark .bg-peach { background-color: #2A2420; }
+    .dark .bg-skysoft { background-color: #20262E; }
+    .dark .bg-blush { background-color: #2A2123; }
+    .dark .bg-\[\#EDF1EC\] { background-color: #1A1F26; }
+
+    /* Typography */
+    .dark .text-ink { color: #EDEAE4; }
+    .dark .text-ink-soft { color: #C4C9CE; }
+    .dark .text-ink-muted { color: #93999F; }
+    .dark .text-\[\#6E6B65\] { color: #B9B4AC; }
+    .dark .hover\:text-ink:hover { color: #EDEAE4; }
+    .dark .placeholder\:text-ink-muted\/60::placeholder { color: rgba(147,153,159,.6); }
+
+    /* Selection */
+    .dark .selection\:bg-sage::selection { background-color: #7FA486; }
+    .dark .selection\:text-ink::selection { color: #12151A; }
+
+    /* Borders */
+    .dark .border-black\/5 { border-color: rgba(255,255,255,.08); }
+    .dark .border-black\/10 { border-color: rgba(255,255,255,.12); }
+    .dark .hover\:border-ink\/20:hover { border-color: rgba(255,255,255,.28); }
+    .dark .focus\:border-ink\/40:focus { border-color: rgba(255,255,255,.35); }
+
+    /* Interactive inversions */
+    .dark .hover\:bg-ink:hover { background-color: #2C333D; }
+    .dark .group:hover .group-hover\:bg-ink { background-color: #2C333D; }
+
+    /* Decorative gradients tuned for dark */
+    .dark .hero-blob { background-image: linear-gradient(135deg,#28332B,#1E2A22 55%,#2A2620); }
+    .dark .mock-gradient { background-image: linear-gradient(135deg,#1E242B,#151A20); }
+
+/* --------------------------- Night starfield --------------------------- */
+#starfield {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+html.dark #starfield { opacity: 1; }
+
+/* --------------------------- Day dragon (light mode only) --------------------------- */
+#dragonLayer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+html:not(.dark) #dragonLayer { opacity: 0.22; }
+@media (max-width: 767px) {
+  html:not(.dark) #dragonLayer { opacity: 0.16; }
+}
+
+/* Content stays above the fixed background canvases */
+main,
+footer {
+  position: relative;
+  z-index: 1;
+}

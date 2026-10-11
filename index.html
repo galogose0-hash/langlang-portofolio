@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Langlang. — Creative Designer &amp; Digital Experiences</title>
+  <meta name="description" content="Langlang Sya'ban Deloner P. — a creative designer who builds digital experiences that people love." />
+  <meta name="theme-color" content="#FBF9F5" />
+  <meta name="color-scheme" content="light dark" />
+  <script src="assets/js/theme-init.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+
+<body class="font-sans text-ink antialiased selection:bg-sage selection:text-ink">
+
+  <div id="cursorGlow" aria-hidden="true"></div>
+  <canvas id="dragonLayer" aria-hidden="true"></canvas>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="fixed inset-x-0 top-0 z-[70] h-1 bg-transparent">
+    <div id="scrollProgress" class="h-full bg-[#C77B4A] transition-transform duration-150 ease-out" style="transform:scaleX(0)"></div>
+  </div>
+
+  <button id="toTop" aria-label="Back to top" class="fixed bottom-5 right-5 z-[60] flex h-12 w-12 items-center justify-center rounded-full bg-ink text-cream shadow-card transition duration-300 hover:-translate-y-1 hover:bg-[#2C333D] sm:bottom-8 sm:right-8">
+    <i class="fa-solid fa-arrow-up"></i>
+  </button>
+
+  <!-- ============ A. HEADER / NAVBAR ============ -->
+  <header id="header" class="fixed inset-x-0 top-0 z-50 transition-all duration-300">
+    <div id="navShell" class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 transition-all duration-300 sm:px-8">
+      <a href="#home" class="font-sans text-xl font-extrabold tracking-tight sm:text-2xl">
+        Langlang <span class="text-[#C77B4A]">Portofolio</span>
+      </a>
+
+      <nav id="pillNav" class="hidden items-center gap-1 rounded-full border border-black/5 bg-cream-deep/90 px-2 py-1.5 shadow-soft backdrop-blur transition-all duration-300 lg:flex">
+        <a href="#home" data-link class="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">Home</a>
+        <a href="#about" data-link class="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">About</a>
+        <a href="#services" data-link class="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">Services</a>
+        <a href="#work" data-link class="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">Work</a>
+        <a href="#testimonials" data-link class="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">Testimonials</a>
+        <a href="#contact" data-link class="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">Contact</a>
+      </nav>
+
+      <div class="flex items-center gap-2">
+        <button id="themeToggle" type="button" aria-label="Toggle dark mode" aria-pressed="false" title="Toggle day / night mode" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/5 bg-white/80 text-ink backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:bg-white">
+          <i class="fa-solid fa-moon text-base transition-transform duration-300" data-theme-icon="moon"></i>
+          <i class="fa-solid fa-sun hidden text-base transition-transform duration-300" data-theme-icon="sun"></i>
+        </button>
+        <a href="#contact" data-contact-open class="magnetic hidden items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-cream shadow-soft transition duration-300 hover:-translate-y-0.5 hover:bg-[#2C333D] sm:inline-flex">
+          <i class="fa-regular fa-paper-plane text-xs"></i>
+          Let's Talk
+        </a>
+        <button id="menuBtn" aria-label="Toggle menu" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/5 bg-white/80 text-ink backdrop-blur transition hover:bg-white lg:hidden">
+          <i id="menuIcon" class="fa-solid fa-bars text-base"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="mobileMenu" class="mx-4 overflow-hidden rounded-3xl border border-black/5 bg-white/95 shadow-card backdrop-blur transition-all duration-300 ease-out lg:hidden">
+      <div class="p-3">
+        <a href="#home" class="block rounded-2xl px-4 py-3 text-sm font-medium text-ink-soft transition hover:bg-sage-light">Home</a>
+        <a href="#about" class="block rounded-2xl px-4 py-3 text-sm font-medium text-ink-soft transition hover:bg-sage-light">About</a>
+        <a href="#services" class="block rounded-2xl px-4 py-3 text-sm font-medium text-ink-soft transition hover:bg-sage-light">Services</a>
+        <a href="#work" class="block rounded-2xl px-4 py-3 text-sm font-medium text-ink-soft transition hover:bg-sage-light">Work</a>
+        <a href="#testimonials" class="block rounded-2xl px-4 py-3 text-sm font-medium text-ink-soft transition hover:bg-sage-light">Testimonials</a>
+        <a href="#contact" data-contact-open class="mt-1 block rounded-2xl bg-ink px-4 py-3 text-center text-sm font-semibold text-cream transition hover:bg-[#2C333D]">Let's Talk</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ B. HERO ============ -->
+    <section id="home" class="relative scroll-mt-24 overflow-hidden pt-32 pb-16 sm:pt-40 lg:pb-24">
+      <div class="pointer-events-none absolute -left-24 top-24 h-72 w-72 rounded-full bg-sage-light blur-3xl"></div>
+      <div class="pointer-events-none absolute -right-16 top-52 h-64 w-64 rounded-full bg-[#EFE7DA] blur-3xl"></div>
+
+      <div class="relative mx-auto grid max-w-7xl items-center gap-16 px-5 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+        <!-- Hero copy -->
+        <div class="reveal">
+          <span class="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.28em] text-ink-muted">
+            <span class="h-1.5 w-1.5 rounded-full bg-[#C77B4A]"></span> Hello, I'm
+          </span>
+
+          <h1 class="mt-6 text-5xl font-extrabold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+            Langlang
+            <svg class="hand-arrow mt-1 block h-4 w-56 text-[#C77B4A] sm:w-64" viewBox="0 0 260 16" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 11C60 3 150 2 256 8"/></svg>
+          </h1>
+
+          <p class="mt-6 max-w-xl text-2xl font-semibold leading-snug text-ink sm:text-[28px]">
+            A Creative Designer Who Builds
+            <span class="font-hand text-[1.35em] font-semibold text-[#6E6B65]">Digital Experiences</span>
+            That People Love.
+          </p>
+          <p class="mt-5 max-w-lg text-[15px] leading-relaxed text-ink-muted">
+            I help brands and businesses turn ideas into beautiful, high-performing digital products.
+          </p>
+
+          <div class="mt-9 flex flex-wrap items-center gap-3">
+            <a href="#work" class="magnetic group inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-cream shadow-soft transition duration-300 hover:-translate-y-0.5 hover:bg-[#2C333D]">
+              View My Work
+              <i class="fa-solid fa-arrow-right text-xs transition group-hover:translate-x-1"></i>
+            </a>
+            <button type="button" id="watchIntro" class="group inline-flex items-center gap-3 rounded-full border border-black/5 bg-white px-5 py-3.5 text-sm font-semibold text-ink transition duration-300 hover:border-ink/20 hover:bg-sage-light">
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-sage text-ink transition group-hover:bg-ink group-hover:text-cream">
+                <i class="fa-solid fa-play text-[10px] translate-x-[1px]"></i>
+              </span>
+              Watch Intro
+            </button>
+          </div>
+
+          <div class="mt-10 flex flex-wrap items-center gap-6">
+            <div class="flex items-center gap-2.5">
+              <a href="#" aria-label="LinkedIn" class="flex h-10 w-10 items-center justify-center rounded-full border border-black/5 bg-white text-ink-soft transition duration-300 hover:-translate-y-0.5 hover:bg-ink hover:text-cream"><i class="fa-brands fa-linkedin-in text-sm"></i></a>
+              <a href="#" aria-label="Instagram" class="flex h-10 w-10 items-center justify-center rounded-full border border-black/5 bg-white text-ink-soft transition duration-300 hover:-translate-y-0.5 hover:bg-ink hover:text-cream"><i class="fa-brands fa-instagram text-sm"></i></a>
+              <a href="#" aria-label="Dribbble" class="flex h-10 w-10 items-center justify-center rounded-full border border-black/5 bg-white text-ink-soft transition duration-300 hover:-translate-y-0.5 hover:bg-ink hover:text-cream"><i class="fa-brands fa-dribbble text-sm"></i></a>
+              <a href="#" aria-label="Behance" class="flex h-10 w-10 items-center justify-center rounded-full border border-black/5 bg-white text-ink-soft transition duration-300 hover:-translate-y-0.5 hover:bg-ink hover:text-cream"><i class="fa-brands fa-behance text-sm"></i></a>
+            </div>
+            <span class="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white/80 px-4 py-2 text-sm font-medium text-ink-soft">
+              <span class="relative flex h-2.5 w-2.5"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-70"></span><span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500"></span></span>
+              Available for new projects
+            </span>
+          </div>
+        </div>
+
+        <!-- Hero portrait -->
+        <div class="reveal relative mx-auto max-w-md lg:max-w-none">
+          <span class="pointer-events-none absolute -left-6 top-2 h-16 w-16 text-[#C77B4A]/70">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" class="hand-arrow"><path d="M8 32C8 16 18 8 32 9"/><path d="M24 9h8v8"/></svg>
+          </span>
+
+          <!-- Floating badge 1 -->
+          <p class="hide-xs absolute -left-4 -top-8 z-20 max-w-[120px] rotate-[-6deg] font-hand text-xl leading-tight text-ink-muted sm:-left-10">
+            Good Design<br>Brighter Tomorrow
+          </p>
+
+          <!-- Floating badge 4 -->
+          <p class="floaty-slow absolute -bottom-10 -right-2 z-20 max-w-[150px] rotate-[5deg] text-right font-hand text-xl leading-tight text-ink-muted sm:-right-8">
+            Ideas · Design<br>Create · Repeat <i class="fa-solid fa-heart text-[0.7em] text-[#C77B4A]"></i>
+          </p>
+
+          <div class="relative" data-parallax="-6">
+            <div class="hero-blob blob absolute inset-2 bg-gradient-to-br from-sage via-sage-light to-[#EDE4D6]"></div>
+            <div class="blob relative overflow-hidden border-4 border-white shadow-card" style="aspect-ratio:4/5">
+              <img src="assets/Langlang.jpeg" alt="Portrait of Langlang" class="h-full w-full object-cover" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=80'">
+            </div>
+          </div>
+
+          <!-- Floating badge 2 -->
+          <div class="floaty absolute -left-5 top-1/3 z-20 flex items-center gap-3 rounded-2xl border border-black/5 bg-white/95 px-4 py-3 shadow-soft backdrop-blur sm:-left-10" data-parallax="22">
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-sage text-ink"><i class="fa-solid fa-award text-sm"></i></span>
+            <div><p class="text-lg font-bold leading-none">5+</p><p class="text-[11px] font-medium text-ink-muted">Years of Experience</p></div>
+          </div>
+
+          <!-- Floating badge 3 -->
+          <div class="floaty-slow absolute -right-4 top-10 z-20 flex items-center gap-3 rounded-2xl border border-black/5 bg-white/95 px-4 py-3 shadow-soft backdrop-blur sm:-right-8" data-parallax="-28">
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-cream"><i class="fa-solid fa-user-group text-sm"></i></span>
+            <div><p class="text-lg font-bold leading-none">100+</p><p class="text-[11px] font-medium text-ink-muted">Happy Clients Worldwide</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Marquee band -->
+    <section aria-label="Skills marquee" class="border-y border-black/5 bg-sage-light/60 py-4">
+      <div class="no-scrollbar overflow-hidden">
+        <div class="marquee-track flex w-max items-center gap-10 whitespace-nowrap py-1">
+          <span class="flex items-center gap-10 text-sm font-bold uppercase tracking-[0.25em] text-ink-soft">
+            UI/UX Design <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Web Development <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Brand Identity <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Digital Marketing <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Creative Direction <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Design Systems <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+          </span>
+          <span class="flex items-center gap-10 text-sm font-bold uppercase tracking-[0.25em] text-ink-soft" aria-hidden="true">
+            UI/UX Design <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Web Development <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Brand Identity <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Digital Marketing <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Creative Direction <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+            Design Systems <i class="fa-solid fa-star text-[9px] text-[#C77B4A]"></i>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ C. ABOUT ME ============ -->
+    <section id="about" class="scroll-mt-24 py-20 lg:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <div class="reveal mb-14 max-w-3xl">
+          <p class="text-xs font-bold uppercase tracking-[0.28em] text-ink-muted">About Me</p>
+          <h2 class="mt-4 text-4xl font-extrabold leading-tight sm:text-5xl">
+            Turning Ideas Into <span class="font-hand text-[1.3em] font-semibold text-[#C77B4A]">Meaningful</span> Experiences
+          </h2>
+        </div>
+
+        <div class="grid items-center gap-10 lg:grid-cols-[0.8fr_1.15fr_0.9fr]">
+          <!-- Photo -->
+          <div class="reveal">
+            <div class="relative">
+              <div class="overflow-hidden rounded-[2rem] border-4 border-white shadow-card">
+                <img src="assets/Langlang.jpeg" alt="Langlang at work" class="h-80 w-full object-cover grayscale" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=700&q=80'">
+              </div>
+              <p class="absolute -right-2 -top-6 rotate-[6deg] font-hand text-xl text-ink-muted">Design A<br>Better You <i class="fa-solid fa-arrow-up-long text-[0.7em] text-[#C77B4A]"></i></p>
+            </div>
+          </div>
+
+          <!-- Bio -->
+          <div class="reveal">
+            <p class="text-[15px] leading-relaxed text-ink-soft">
+              I'm <span class="font-semibold text-ink">Langlang</span>, a multidisciplinary designer, passionate about creating clean, modern and user-focused digital experiences. I combine strategy, design and technology to help brands grow and make a real impact.
+            </p>
+            <a href="#" class="magnetic mt-7 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-cream shadow-soft transition duration-300 hover:-translate-y-0.5 hover:bg-[#2C333D]">
+              <i class="fa-solid fa-download text-xs"></i>
+              Download Resume
+            </a>
+          </div>
+
+          <!-- Stats -->
+          <div class="reveal grid gap-4">
+            <div class="flex items-center gap-4 rounded-3xl border border-black/5 bg-cream-deep p-5 shadow-soft transition duration-300 hover:-translate-y-1">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-ink"><i class="fa-regular fa-folder-open text-lg"></i></span>
+              <div><p class="text-2xl font-bold leading-none" data-count="100">100+</p><p class="text-xs font-medium text-ink-muted">Projects Completed</p></div>
+            </div>
+            <div class="flex items-center gap-4 rounded-3xl border border-black/5 bg-cream-deep p-5 shadow-soft transition duration-300 hover:-translate-y-1">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-ink"><i class="fa-regular fa-face-smile text-lg"></i></span>
+              <div><p class="text-2xl font-bold leading-none" data-count="50">50+</p><p class="text-xs font-medium text-ink-muted">Happy Clients</p></div>
+            </div>
+            <div class="flex items-center gap-4 rounded-3xl border border-black/5 bg-cream-deep p-5 shadow-soft transition duration-300 hover:-translate-y-1">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-ink"><i class="fa-regular fa-clock text-lg"></i></span>
+              <div><p class="text-2xl font-bold leading-none" data-count="5">5+</p><p class="text-xs font-medium text-ink-muted">Years of Experience</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ D. SKILLS & SERVICES ============ -->
+    <section id="services" class="scroll-mt-24 py-20 lg:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <div class="reveal mb-14 text-center">
+          <p class="text-xs font-bold uppercase tracking-[0.28em] text-ink-muted">What I Do</p>
+          <h2 class="relative mt-4 inline-block text-4xl font-extrabold leading-tight sm:text-5xl">
+            Skills &amp; Services
+            <svg class="hand-arrow absolute -right-10 -top-3 h-8 w-8 text-[#C77B4A]" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 30 30 8"/><path d="M18 8h12v12"/></svg>
+          </h2>
+        </div>
+
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <!-- 1 -->
+          <div class="tilt reveal group relative overflow-hidden rounded-3xl border border-black/5 bg-peach p-7 transition duration-300 hover:shadow-card">
+            <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-ink shadow-sm"><i class="fa-regular fa-object-group text-xl"></i></span>
+            <h3 class="mt-6 text-xl font-bold">UI/UX Design</h3>
+            <p class="mt-3 text-sm leading-relaxed text-ink-soft">Research, wireframes and interfaces that feel intuitive and look beautiful.</p>
+            <a href="#work" class="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink transition duration-300 group-hover:bg-ink group-hover:text-cream"><i class="fa-solid fa-arrow-right text-xs -rotate-45 transition group-hover:rotate-0"></i></a>
+          </div>
+          <!-- 2 -->
+          <div class="tilt reveal group relative overflow-hidden rounded-3xl border border-black/5 bg-skysoft p-7 transition duration-300 hover:shadow-card">
+            <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-ink shadow-sm"><i class="fa-solid fa-code text-xl"></i></span>
+            <h3 class="mt-6 text-xl font-bold">Web Development</h3>
+            <p class="mt-3 text-sm leading-relaxed text-ink-soft">Fast, accessible, responsive front-ends built with clean and modern code.</p>
+            <a href="#work" class="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink transition duration-300 group-hover:bg-ink group-hover:text-cream"><i class="fa-solid fa-arrow-right text-xs -rotate-45 transition group-hover:rotate-0"></i></a>
+          </div>
+          <!-- 3 -->
+          <div class="tilt reveal group relative overflow-hidden rounded-3xl border border-black/5 bg-sagepastel p-7 transition duration-300 hover:shadow-card">
+            <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-ink shadow-sm"><i class="fa-regular fa-gem text-xl"></i></span>
+            <h3 class="mt-6 text-xl font-bold">Brand Identity</h3>
+            <p class="mt-3 text-sm leading-relaxed text-ink-soft">Logos, type systems and guidelines that make brands unforgettable.</p>
+            <a href="#work" class="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink transition duration-300 group-hover:bg-ink group-hover:text-cream"><i class="fa-solid fa-arrow-right text-xs -rotate-45 transition group-hover:rotate-0"></i></a>
+          </div>
+          <!-- 4 -->
+          <div class="tilt reveal group relative overflow-hidden rounded-3xl border border-black/5 bg-blush p-7 transition duration-300 hover:shadow-card">
+            <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-ink shadow-sm"><i class="fa-solid fa-bullhorn text-xl"></i></span>
+            <h3 class="mt-6 text-xl font-bold">Digital Marketing</h3>
+            <p class="mt-3 text-sm leading-relaxed text-ink-soft">Campaigns, content and growth strategy that turn visitors into customers.</p>
+            <a href="#work" class="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink transition duration-300 group-hover:bg-ink group-hover:text-cream"><i class="fa-solid fa-arrow-right text-xs -rotate-45 transition group-hover:rotate-0"></i></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ E. SELECTED PROJECTS ============ -->
+    <section id="work" class="scroll-mt-24 py-20 lg:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <div class="reveal mb-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div class="max-w-2xl">
+            <p class="text-xs font-bold uppercase tracking-[0.28em] text-ink-muted">Featured Work</p>
+            <h2 class="mt-4 text-4xl font-extrabold leading-tight sm:text-5xl">Selected Projects</h2>
+          </div>
+          <a href="#" class="inline-flex items-center gap-2 self-start rounded-full border border-black/5 bg-white px-5 py-3 text-sm font-semibold transition duration-300 hover:-translate-y-0.5 hover:bg-sage-light sm:self-auto">
+            View All Projects
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </a>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-3">
+          <a href="#" class="tilt reveal group block overflow-hidden rounded-4xl border border-black/5 bg-[#EDF1EC] p-4 transition duration-300 hover:shadow-card">
+            <div class="mock-gradient zoom-able flex h-64 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-white to-sage-light">
+              <div class="w-4/5 rounded-xl border border-black/5 bg-white p-3 shadow-soft">
+                <div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-[#F3B0A4]"></span><span class="h-2 w-2 rounded-full bg-[#F4D58D]"></span><span class="h-2 w-2 rounded-full bg-[#A6C0AF]"></span></div>
+                <div class="mt-3 flex items-end gap-2 h-24">
+                  <span class="w-1/5 rounded-t-md bg-sage" style="height:40%"></span>
+                  <span class="w-1/5 rounded-t-md bg-[#B7CDBC]" style="height:65%"></span>
+                  <span class="w-1/5 rounded-t-md bg-[#9BBB9F]" style="height:50%"></span>
+                  <span class="w-1/5 rounded-t-md bg-[#7FA486]" style="height:85%"></span>
+                  <span class="w-1/5 rounded-t-md bg-[#658A6D]" style="height:70%"></span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between px-2 pb-1 pt-5">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-ink-muted">Web App Design</p>
+                <h3 class="mt-1 text-lg font-bold">Modern Dashboard</h3>
+              </div>
+              <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink transition duration-300 group-hover:bg-ink group-hover:text-cream"><i class="fa-solid fa-arrow-right text-xs -rotate-45 transition group-hover:rotate-0"></i></span>
+            </div>
+          </a>
+
+          <a href="#" class="tilt reveal group block overflow-hidden rounded-4xl border border-black/5 bg-skysoft p-4 transition duration-300 hover:shadow-card">
+            <div class="mock-gradient zoom-able flex h-64 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-white to-[#CED9EC]">
+              <div class="h-52 w-28 rounded-[1.6rem] border-4 border-white bg-ink p-2 shadow-soft">
+                <div class="h-full w-full rounded-2xl bg-gradient-to-b from-[#9BBB9F] to-[#658A6D] p-3">
+                  <div class="mx-auto h-1 w-8 rounded-full bg-white/60"></div>
+                  <div class="mt-3 h-12 rounded-lg bg-white/25"></div>
+                  <div class="mt-2 h-2.5 w-4/5 rounded-full bg-white/40"></div>
+                  <div class="mt-1.5 h-2.5 w-3/5 rounded-full bg-white/30"></div>
+                  <div class="mt-2 h-2.5 w-4/5 rounded-full bg-white/40"></div>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between px-2 pb-1 pt-5">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-ink-muted">UI/UX Design</p>
+                <h3 class="mt-1 text-lg font-bold">Travel Mobile App</h3>
+              </div>
+              <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink transition duration-300 group-hover:bg-ink group-hover:text-cream"><i class="fa-solid fa-arrow-right text-xs -rotate-45 transition group-hover:rotate-0"></i></span>
+            </div>
+          </a>
+
+          <a href="#" class="tilt reveal group block overflow-hidden rounded-4xl border border-black/5 bg-blush p-4 transition duration-300 hover:shadow-card">
+            <div class="mock-gradient zoom-able flex h-64 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-white to-[#EFD6D7]">
+              <div class="text-center">
+                <p class="text-6xl font-extrabold tracking-tight text-[#C77B4A]">Nori</p>
+                <p class="mt-1 text-[10px] font-semibold uppercase tracking-[0.4em] text-ink-muted">Organic Skincare</p>
+                <div class="mt-4 flex items-center justify-center gap-2">
+                  <span class="h-8 w-8 rounded-full bg-[#C77B4A]"></span>
+                  <span class="h-8 w-8 rounded-full bg-[#A6C0AF]"></span>
+                  <span class="h-8 w-8 rounded-full border border-[#D9C6B8] bg-cream"></span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between px-2 pb-1 pt-5">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-ink-muted">Branding</p>
+                <h3 class="mt-1 text-lg font-bold">Brand Identity</h3>
+              </div>
+              <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink transition duration-300 group-hover:bg-ink group-hover:text-cream"><i class="fa-solid fa-arrow-right text-xs -rotate-45 transition group-hover:rotate-0"></i></span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ F. TESTIMONIALS ============ -->
+    <section id="testimonials" class="scroll-mt-24 py-20 lg:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <div class="reveal mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div class="mx-auto max-w-2xl text-center sm:mx-0 sm:text-left">
+            <p class="text-xs font-bold uppercase tracking-[0.28em] text-ink-muted">Testimonials</p>
+            <h2 class="mt-4 text-4xl font-extrabold leading-tight sm:text-5xl">What Clients Say</h2>
+          </div>
+          <div class="flex items-center justify-center gap-3">
+            <button id="testiPrev" aria-label="Previous testimonial" class="flex h-11 w-11 items-center justify-center rounded-full border border-black/5 bg-white text-ink transition duration-300 hover:-translate-y-0.5 hover:bg-ink hover:text-cream"><i class="fa-solid fa-arrow-left text-sm"></i></button>
+            <button id="testiNext" aria-label="Next testimonial" class="flex h-11 w-11 items-center justify-center rounded-full border border-black/5 bg-white text-ink transition duration-300 hover:-translate-y-0.5 hover:bg-ink hover:text-cream"><i class="fa-solid fa-arrow-right text-sm"></i></button>
+          </div>
+        </div>
+
+        <div id="testiTrack" class="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-6 overflow-x-auto px-5 pb-2 sm:mx-0 sm:px-0">
+          <article class="flex flex-col snap-start shrink-0 basis-[86%] rounded-4xl border border-black/5 bg-white p-7 shadow-soft transition duration-300 hover:-translate-y-1.5 sm:basis-[46%] lg:basis-[calc(33.333%-1rem)]">
+            <div class="flex gap-1 text-butter"><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i></div>
+            <p class="mt-5 flex-1 text-[15px] leading-relaxed text-ink-soft">"Langlang took our messy idea and turned it into a product our users genuinely love. The attention to detail was unreal."</p>
+            <div class="mt-6 flex items-center gap-3">
+              <img src="https://i.pravatar.cc/100?img=12" alt="Ahmed Raza" class="h-12 w-12 rounded-full object-cover">
+              <div><p class="font-semibold leading-tight">Ahmed Raza</p><p class="text-xs text-ink-muted">Founder, TechHive</p></div>
+            </div>
+          </article>
+
+          <article class="flex flex-col snap-start shrink-0 basis-[86%] rounded-4xl border border-black/5 bg-white p-7 shadow-soft transition duration-300 hover:-translate-y-1.5 sm:basis-[46%] lg:basis-[calc(33.333%-1rem)]">
+            <div class="flex gap-1 text-butter"><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i></div>
+            <p class="mt-5 flex-1 text-[15px] leading-relaxed text-ink-soft">"Working with Langlang was effortless. He listened, shipped fast, and delivered a brand that finally looks as modern as our vision."</p>
+            <div class="mt-6 flex items-center gap-3">
+              <img src="https://i.pravatar.cc/100?img=45" alt="Sara Khan" class="h-12 w-12 rounded-full object-cover">
+              <div><p class="font-semibold leading-tight">Sara Khan</p><p class="text-xs text-ink-muted">Marketing Manager</p></div>
+            </div>
+          </article>
+
+          <article class="flex flex-col snap-start shrink-0 basis-[86%] rounded-4xl border border-black/5 bg-white p-7 shadow-soft transition duration-300 hover:-translate-y-1.5 sm:basis-[46%] lg:basis-[calc(33.333%-1rem)]">
+            <div class="flex gap-1 text-butter"><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i><i class="fa-solid fa-star text-sm"></i></div>
+            <p class="mt-5 flex-1 text-[15px] leading-relaxed text-ink-soft">"Our conversions jumped 40% after the redesign. Langlang balances beautiful design with real business thinking — a rare combination."</p>
+            <div class="mt-6 flex items-center gap-3">
+              <img src="https://i.pravatar.cc/100?img=33" alt="Bilal Ahmed" class="h-12 w-12 rounded-full object-cover">
+              <div><p class="font-semibold leading-tight">Bilal Ahmed</p><p class="text-xs text-ink-muted">CEO, BrightLab</p></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ G. CTA BANNER ============ -->
+    <section id="contact" class="scroll-mt-24 pb-20 pt-4 lg:pb-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8">
+        <div class="reveal relative overflow-hidden rounded-5xl bg-sage px-8 py-14 sm:px-14 sm:py-16">
+          <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-sage-light blur-2xl"></div>
+
+          <div class="relative grid items-center gap-10 lg:grid-cols-[auto_1fr_auto]">
+            <!-- Plant illustration -->
+            <div class="hidden justify-self-start lg:block" aria-hidden="true">
+              <svg width="120" height="140" viewBox="0 0 120 140" fill="none">
+                <path d="M60 96c0-26-16-40-34-44 12 20 20 30 34 32" stroke="#4C6B52" stroke-width="2.5" stroke-linecap="round" fill="#A6C0AF"/>
+                <path d="M60 96c0-30 14-46 34-50-10 22-20 34-34 36" stroke="#4C6B52" stroke-width="2.5" stroke-linecap="round" fill="#9BBB9F"/>
+                <path d="M60 100V56" stroke="#4C6B52" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M40 100h40l-5 32a6 6 0 0 1-6 5H51a6 6 0 0 1-6-5l-5-32Z" fill="#C77B4A"/>
+                <rect x="36" y="92" width="48" height="10" rx="4" fill="#B5703F"/>
+              </svg>
+            </div>
+
+            <!-- Center -->
+            <div class="text-center lg:text-left">
+              <p class="text-xs font-bold uppercase tracking-[0.28em] text-ink-muted">Let's Work Together</p>
+              <h2 class="mt-4 text-4xl font-extrabold leading-tight text-ink sm:text-5xl">Have a Project in Mind?</h2>
+              <p class="mx-auto mt-4 max-w-md text-[15px] text-ink-soft lg:mx-0">Tell me about your idea and let's turn it into a product people remember.</p>
+              <button type="button" data-contact-open class="magnetic group mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-cream shadow-soft transition duration-300 hover:-translate-y-0.5 hover:bg-[#2C333D]">
+                Get In Touch
+                <i class="fa-solid fa-arrow-right text-xs transition group-hover:translate-x-1"></i>
+              </button>
+            </div>
+
+            <!-- Hand note -->
+            <p class="justify-self-center rotate-[4deg] text-center font-hand text-2xl leading-tight text-ink-muted lg:justify-self-end lg:text-right">
+              Great Ideas Start<br>with a Conversation <i class="fa-solid fa-heart text-[0.6em] text-[#C77B4A]"></i>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ H. FOOTER ============ -->
+  <footer class="bg-ink text-sage-light">
+    <div class="mx-auto max-w-7xl px-5 py-14 sm:px-8">
+      <div class="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
+        <div class="max-w-sm">
+          <a href="#home" class="text-2xl font-extrabold text-cream">Langlang <span class="text-[#C77B4A]">Portofolio</span></a>
+          <p class="mt-4 text-sm leading-relaxed text-sage-light/80">Designing a Better Digital Tomorrow.</p>
+        </div>
+
+        <nav class="grid grid-cols-2 gap-x-12 gap-y-3 text-sm sm:gap-x-20">
+          <a href="#home" class="text-sage-light/80 transition hover:text-cream">Home</a>
+          <a href="#about" class="text-sage-light/80 transition hover:text-cream">About</a>
+          <a href="#services" class="text-sage-light/80 transition hover:text-cream">Services</a>
+          <a href="#work" class="text-sage-light/80 transition hover:text-cream">Work</a>
+          <a href="#testimonials" class="text-sage-light/80 transition hover:text-cream">Testimonials</a>
+          <a href="#contact" class="text-sage-light/80 transition hover:text-cream">Contact</a>
+        </nav>
+
+        <div class="flex items-center gap-3">
+          <a href="#" aria-label="LinkedIn" class="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-sage-light transition duration-300 hover:-translate-y-0.5 hover:bg-sage hover:text-ink"><i class="fa-brands fa-linkedin-in text-sm"></i></a>
+          <a href="#" aria-label="Instagram" class="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-sage-light transition duration-300 hover:-translate-y-0.5 hover:bg-sage hover:text-ink"><i class="fa-brands fa-instagram text-sm"></i></a>
+          <a href="#" aria-label="Dribbble" class="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-sage-light transition duration-300 hover:-translate-y-0.5 hover:bg-sage hover:text-ink"><i class="fa-brands fa-dribbble text-sm"></i></a>
+          <a href="#" aria-label="Behance" class="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-sage-light transition duration-300 hover:-translate-y-0.5 hover:bg-sage hover:text-ink"><i class="fa-brands fa-behance text-sm"></i></a>
+        </div>
+      </div>
+
+      <div class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-sage-light/60 sm:flex-row">
+        <p>&copy; 2026 Langlang Sya'ban Deloner P. All rights reserved.</p>
+        <div class="flex gap-6">
+          <a href="#" class="transition hover:text-cream">Privacy Policy</a>
+          <a href="#" class="transition hover:text-cream">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============ VIDEO LIGHTBOX ============ -->
+  <div id="introModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-ink/70 p-4 backdrop-blur-sm">
+    <div class="relative w-full max-w-3xl overflow-hidden rounded-4xl bg-cream p-3 shadow-card">
+      <button id="introClose" aria-label="Close" class="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-ink text-cream transition hover:bg-[#2C333D]"><i class="fa-solid fa-xmark"></i></button>
+      <div class="overflow-hidden rounded-3xl bg-black" style="aspect-ratio:16/9">
+        <video id="introVideo" class="h-full w-full object-cover" controls playsinline poster="dreamy.jpg">
+          <source src="assets/intro.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CONTACT MODAL ============ -->
+  <div id="contactModal" class="fixed inset-0 z-[65] flex items-center justify-center p-4">
+    <div id="contactBackdrop" class="absolute inset-0 bg-ink/70 backdrop-blur-sm" aria-hidden="true"></div>
+    <div id="contactPanel" role="dialog" aria-modal="true" aria-labelledby="contactTitle" class="relative z-10 w-full max-w-4xl overflow-hidden rounded-5xl border border-black/5 bg-cream shadow-card">
+      <button id="contactClose" aria-label="Close contact form" class="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-ink text-cream transition hover:rotate-90 hover:bg-[#2C333D]"><i class="fa-solid fa-xmark"></i></button>
+
+      <div class="grid lg:grid-cols-[0.85fr_1.15fr]">
+        <!-- Info side -->
+        <div class="relative hidden flex-col justify-between overflow-hidden bg-sage p-9 lg:flex">
+          <div class="pointer-events-none absolute -left-12 -top-12 h-48 w-48 rounded-full bg-sage-light blur-2xl"></div>
+          <div class="relative">
+            <p class="text-xs font-bold uppercase tracking-[0.28em] text-ink-muted">Let's Work Together</p>
+            <h3 class="mt-4 text-3xl font-extrabold leading-tight text-ink">Start a<br>Conversation</h3>
+            <p class="mt-4 text-sm leading-relaxed text-ink-soft">Tell me about your project and I'll get back to you within 24 hours.</p>
+          </div>
+          <div class="relative mt-8 space-y-4">
+            <a href="mailto:langlangsyaban2@gmail.com" class="flex items-center gap-3 text-sm font-medium text-ink transition hover:-translate-y-0.5"><span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink"><i class="fa-regular fa-envelope"></i></span>langlangsyaban2@gmail.com</a>
+            <p class="flex items-center gap-3 text-sm font-medium text-ink"><span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink"><i class="fa-solid fa-location-dot"></i></span>Jakarta, Indonesia</p>
+          </div>
+          <p class="relative mt-8 rotate-[-3deg] font-hand text-xl leading-tight text-ink-muted">Ideas are worth<br>sharing <i class="fa-solid fa-heart text-[0.7em] text-[#C77B4A]"></i></p>
+        </div>
+
+        <!-- Form side -->
+        <div class="p-7 sm:p-10">
+          <h3 id="contactTitle" class="text-2xl font-extrabold text-ink">Have a Project in Mind?</h3>
+          <p class="mt-2 text-sm text-ink-muted">Fill in the details below and let's build something great.</p>
+
+          <form id="contactForm" class="mt-7 grid gap-4" novalidate>
+            <input type="hidden" name="access_key" value="YOUR_WEB3FORMS_ACCESS_KEY">
+            <input type="hidden" name="subject" value="New message from your portfolio">
+            <input type="hidden" name="from_name" value="Portfolio Contact Form">
+            <input type="checkbox" name="botcheck" class="hidden" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label for="cName" class="mb-1.5 block text-xs font-semibold text-ink-soft">Full Name</label>
+                <input id="cName" name="name" type="text" required placeholder="Your name" class="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-ink-muted/60 focus:border-ink/40 focus:ring-2 focus:ring-sage">
+              </div>
+              <div>
+                <label for="cEmail" class="mb-1.5 block text-xs font-semibold text-ink-soft">Email</label>
+                <input id="cEmail" name="email" type="email" required placeholder="you@email.com" class="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-ink-muted/60 focus:border-ink/40 focus:ring-2 focus:ring-sage">
+              </div>
+            </div>
+            <div>
+              <label for="cService" class="mb-1.5 block text-xs font-semibold text-ink-soft">What do you need?</label>
+              <select id="cService" name="service" class="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-ink/40 focus:ring-2 focus:ring-sage">
+                <option>UI/UX Design</option>
+                <option>Web Development</option>
+                <option>Brand Identity</option>
+                <option>Digital Marketing</option>
+                <option>Something else</option>
+              </select>
+            </div>
+            <div>
+              <label for="cMessage" class="mb-1.5 block text-xs font-semibold text-ink-soft">Project Details</label>
+              <textarea id="cMessage" name="message" rows="4" required placeholder="Tell me a little about your idea..." class="w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-ink-muted/60 focus:border-ink/40 focus:ring-2 focus:ring-sage"></textarea>
+            </div>
+            <p id="formError" class="hidden text-xs font-semibold text-red-500">Please fill in your name, a valid email, and a short message.</p>
+            <button type="submit" class="magnetic group mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-ink px-7 py-3.5 text-sm font-semibold text-cream shadow-soft transition duration-300 hover:-translate-y-0.5 hover:bg-[#2C333D]">
+              <span id="submitLabel">Send Message</span>
+              <i class="fa-regular fa-paper-plane text-xs transition group-hover:translate-x-0.5"></i>
+            </button>
+          </form>
+
+          <div id="contactSuccess" class="hidden flex-col items-center py-10 text-center">
+            <span class="flex h-16 w-16 items-center justify-center rounded-full bg-sage text-ink"><i class="fa-solid fa-check text-2xl"></i></span>
+            <h3 class="mt-5 text-2xl font-extrabold text-ink">Message Sent!</h3>
+            <p class="mt-2 max-w-xs text-sm text-ink-muted">Thanks for reaching out — Langlang will get back to you soon.</p>
+            <button type="button" id="contactDone" class="mt-6 rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:bg-sage-light">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/starfield.js"></script>
+  <script src="assets/js/dragon.js"></script>
+</body>
+</html>
