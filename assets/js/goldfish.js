@@ -1,28 +1,38 @@
 /* ==========================================================================
-   Day goldfish - interactive 3D koi / goldfish (LIGHT MODE ONLY)
+   Day goldfish - living 3D goldfish with skeletal animation (LIGHT MODE ONLY)
    --------------------------------------------------------------------------
-   Built with Three.js. It replaces the old 2D dragon doodle for light mode.
+   Replaces the old 2D dragon doodle. Built with the Three.js global (UMD)
+   build so it also works when index.html is opened straight from file://.
 
-   Highlights
-   - Fully procedural 3D goldfish: plump body (lathe), orange -> gold gradient
-     via vertex colours, translucent "veil" fins drawn from canvas textures.
-   - Organic swimming: the body and every fin are deformed in the *vertex
-     shader* with a travelling sine wave, so nothing ever looks stiff.
-   - Gentle idle floating (bobbing + micro yaw/roll) even when the page is
-     still, and a lively tail beat while the user scrolls.
-   - Scroll aware: a smoothed (lerped) progress drives a swimming path across
-     the viewport. The body orientation is built from its own velocity vector
-     (lookAt-like) so it always faces the direction it is travelling.
-   - Lightweight (a handful of meshes, no shadows), responsive (resize) and
-     properly disposed (geometries, materials, textures, renderer).
-   - Hidden / paused in dark mode, and when the tab is not visible.
-   - Respects prefers-reduced-motion (renders a calm static pose).
+   Anatomy (anti "bloated / stiff / flat")
+   - PARAMETRIC EGG BODY: rings along X with an ASYMMETRIC cross-section.
+     The back arches high, the belly hangs deep and the sides are laterally
+     compressed (narrow in Z) - a real fancy-goldfish silhouette instead of a
+     round tube. Catmull-Rom control curves keep every transition smooth.
+   - SHARED SKELETON: one THREE.Skeleton of 10 spine bones + a 3-bone tail
+     chain drives BOTH the body SkinnedMesh and the flowing veil-tail meshes.
+     Linear blend skinning travels the deformation continuously to the fin.
+   - WAVE + TURN S-CURVE: a travelling propulsive wave runs head -> tail while
+     the mid-body counter-bends against the tail (dynamic S-curve); steering
+     adds a gentle S offset so turns look planned, not pivoted.
+   - SPRING INERTIA: every bone is driven through a critically-ish damped
+     spring, so the body, tail and head visibly LAG the muscle and settle.
+     Stiff on the spine, soft on the tail -> secondary motion, no stiffness.
+   - TAIL DROOP: the veil tail loses lift and sags down under gravity as the
+     fish slows, and streams straight back when it bursts.
+   - SHADING: MeshPhysicalMaterial with iridescence, a procedurally generated
+     1024px overlapping-scale normal map, sheen and clearcoat on the body;
+     translucent transmissive fins for a light-through-membrane (SSS) look.
+   - FRESNEL RIM: an onBeforeCompile injection adds a view-dependent bright
+     edge (warm gold) so the fish separates from the bright cream page.
+   - CONVEX LENS EYES: clear transmissive cornea over a glossy iris + glint.
 
-   Loaded as a classic script, after the global Three.js build:
+   Lifecycle: hidden & paused in dark mode, paused when the tab is hidden,
+   reacts to resize, respects prefers-reduced-motion and disposes fully.
+
+   Load after the global build:
      <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
      <script src="assets/js/goldfish.js"></script>
-   (A classic script is used so everything keeps working when the page is
-   opened directly from disk via file://, which blocks ES modules.)
    ========================================================================== */
 (function () {
   "use strict";
@@ -35,6 +45,7 @@
     return;
   }
 
+  var TAU = Math.PI * 2;
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
@@ -49,7 +60,7 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.06;
 
   /* -------------------------------- Scene -------------------------------- */
   var scene = new THREE.Scene();
@@ -61,8 +72,6 @@
   var visH = 1;
 
   /* --------------------- Soft, bright environment map --------------------- */
-  // A warm studio gradient used as scene.environment. This keeps the Physical
-  // materials looking glossy and "wet" without needing any external HDR file.
   var envRT = null;
   (function buildEnvironment() {
     var c = document.createElement("canvas");
@@ -70,19 +79,26 @@
     c.height = 512;
     var g = c.getContext("2d");
     var grad = g.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, "#fff6e6");
+    grad.addColorStop(0, "#fff7e8");
     grad.addColorStop(0.46, "#fdf6ec");
     grad.addColorStop(0.5, "#ffffff");
     grad.addColorStop(0.76, "#f0e4d2");
     grad.addColorStop(1, "#e2d3bd");
     g.fillStyle = grad;
     g.fillRect(0, 0, 1024, 512);
-    var sun = g.createRadialGradient(300, 150, 8, 300, 150, 230);
+    var sun = g.createRadialGradient(300, 140, 8, 300, 140, 240);
     sun.addColorStop(0, "rgba(255,255,255,0.95)");
     sun.addColorStop(1, "rgba(255,255,255,0)");
     g.fillStyle = sun;
     g.beginPath();
-    g.arc(300, 150, 230, 0, Math.PI * 2);
+    g.arc(300, 140, 240, 0, TAU);
+    g.fill();
+    var cool = g.createRadialGradient(760, 380, 10, 760, 380, 280);
+    cool.addColorStop(0, "rgba(214,232,255,0.55)");
+    cool.addColorStop(1, "rgba(214,232,255,0)");
+    g.fillStyle = cool;
+    g.beginPath();
+    g.arc(760, 380, 280, 0, TAU);
     g.fill();
 
     var tex = new THREE.CanvasTexture(c);
@@ -98,40 +114,125 @@
   })();
 
   /* ------------------------------- Lighting ------------------------------- */
-  scene.add(new THREE.HemisphereLight(0xfff4e0, 0xeadcc6, 1.15));
+  scene.add(new THREE.HemisphereLight(0xfff4e0, 0xeadcc6, 1.05));
   var keyLight = new THREE.DirectionalLight(0xfff2dd, 2.0);
   keyLight.position.set(4, 6, 6);
   scene.add(keyLight);
-  var fillLight = new THREE.DirectionalLight(0xdce8ff, 0.65);
+  var fillLight = new THREE.DirectionalLight(0xdce8ff, 0.62);
   fillLight.position.set(-6, 2, 4);
   scene.add(fillLight);
-  var rimLight = new THREE.DirectionalLight(0xffcf9a, 0.9);
-  rimLight.position.set(-3, -5, -6);
+  var rimLight = new THREE.DirectionalLight(0xffcf9a, 1.0);
+  rimLight.position.set(-3, -4, -6);
   scene.add(rimLight);
 
   /* ------------------------------ Utilities ------------------------------ */
-  function smoothstep(a, b, x) {
-    var t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-    return t * t * (3 - 2 * t);
-  }
   function clamp(v, a, b) {
     return v < a ? a : v > b ? b : v;
   }
+  function smoothstep(a, b, x) {
+    var t = clamp((x - a) / (b - a), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+  function wrapAngle(a) {
+    while (a > Math.PI) a -= TAU;
+    while (a < -Math.PI) a += TAU;
+    return a;
+  }
+  function catmull(p0, p1, p2, p3, t) {
+    var t2 = t * t;
+    var t3 = t2 * t;
+    return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+  }
+  // Smooth Catmull-Rom sample of a scalar control array, u in [0,1].
+  function sampleCurve(arr, u) {
+    var n = arr.length;
+    if (n === 1) return arr[0];
+    var f = clamp(u, 0, 1) * (n - 1);
+    var i1 = Math.floor(f);
+    var i2 = Math.min(i1 + 1, n - 1);
+    var i0 = Math.max(i1 - 1, 0);
+    var i3 = Math.min(i2 + 1, n - 1);
+    return catmull(arr[i0], arr[i1], arr[i2], arr[i3], f - i1);
+  }
+
+  /* ------------------------- Scale normal map ---------------------------- */
+  function makeScaleNormalMap() {
+    var S = 1024;
+    var height = document.createElement("canvas");
+    height.width = height.height = S;
+    var h = height.getContext("2d");
+    h.fillStyle = "#808080";
+    h.fillRect(0, 0, S, S);
+    // Overlapping rhombic (diamond) scales, offset per row like a fish.
+    var cols = 26;
+    var rows = 34;
+    var w = S / cols;
+    var hh = S / rows;
+    for (var r = -1; r <= rows; r++) {
+      for (var i = -1; i <= cols; i++) {
+        var x = i * w + (r & 1 ? w * 0.5 : 0);
+        var y = r * hh;
+        var rad = w * 0.66;
+        var grd = h.createRadialGradient(x, y - rad * 0.45, 1, x, y, rad);
+        grd.addColorStop(0, "rgba(255,255,255,0.9)");
+        grd.addColorStop(0.62, "rgba(150,150,150,0.28)");
+        grd.addColorStop(1, "rgba(80,80,80,0.0)");
+        h.fillStyle = grd;
+        h.beginPath();
+        h.arc(x, y, rad, 0, TAU);
+        h.fill();
+        // darker trailing rim of the scale
+        h.strokeStyle = "rgba(52,52,52,0.7)";
+        h.lineWidth = 1.6;
+        h.beginPath();
+        h.arc(x, y, rad * 0.9, 0.12 * Math.PI, 0.88 * Math.PI);
+        h.stroke();
+      }
+    }
+
+    var src = h.getImageData(0, 0, S, S).data;
+    var out = h.createImageData(S, S);
+    var strength = 2.4;
+    function H(x, y) {
+      x = (x + S) % S;
+      y = (y + S) % S;
+      return src[(y * S + x) * 4] / 255;
+    }
+    for (var yy = 0; yy < S; yy++) {
+      for (var xx = 0; xx < S; xx++) {
+        var dx = (H(xx - 1, yy) - H(xx + 1, yy)) * strength;
+        var dy = (H(xx, yy - 1) - H(xx, yy + 1)) * strength;
+        var len = Math.sqrt(dx * dx + dy * dy + 1);
+        var o = (yy * S + xx) * 4;
+        out.data[o] = Math.round((dx / len) * 127.5 + 127.5);
+        out.data[o + 1] = Math.round((dy / len) * 127.5 + 127.5);
+        out.data[o + 2] = Math.round((1 / len) * 127.5 + 127.5);
+        out.data[o + 3] = 255;
+      }
+    }
+    var nm = document.createElement("canvas");
+    nm.width = nm.height = S;
+    nm.getContext("2d").putImageData(out, 0, 0);
+    var tex = new THREE.CanvasTexture(nm);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(5.5, 3.2);
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return tex;
+  }
 
   /* ------------------- Procedural fin textures (canvas) ------------------- */
-  function goldRamp(ctx, size, cx, cy, r0, r1) {
+  function goldRamp(ctx, cx, cy, r0, r1) {
     var g = ctx.createRadialGradient(cx, cy, r0, cx, cy, r1);
-    g.addColorStop(0.0, "rgba(238,132,26,0.95)");
+    g.addColorStop(0.0, "rgba(236,126,22,0.95)");
     g.addColorStop(0.4, "rgba(247,176,72,0.72)");
     g.addColorStop(0.75, "rgba(255,220,150,0.30)");
     g.addColorStop(1.0, "rgba(255,240,205,0.0)");
     return g;
   }
-
-  function drawRays(ctx, size, cx, cy, spread, len, count, alpha) {
+  function drawRays(ctx, cx, cy, spread, len, count, alpha) {
     ctx.save();
     ctx.strokeStyle = "rgba(150,78,20," + alpha + ")";
-    ctx.lineWidth = Math.max(1, size * 0.006);
+    ctx.lineWidth = 1.4;
     ctx.lineCap = "round";
     for (var i = 0; i <= count; i++) {
       var a = -spread + (i / count) * spread * 2;
@@ -143,8 +244,7 @@
     }
     ctx.restore();
   }
-
-  function finCanvas(kind) {
+  function finTexture(kind) {
     var S = 256;
     var c = document.createElement("canvas");
     c.width = c.height = S;
@@ -152,353 +252,600 @@
     var baseX = 0.5 * S;
     var baseY = 0.99 * S;
 
-    g.save();
     g.beginPath();
     if (kind === "tail") {
-      // Elegant veiltail: two rounded lobes with a soft central notch.
-      g.moveTo(0.45 * S, 0.99 * S);
-      g.bezierCurveTo(0.18 * S, 0.88 * S, 0.03 * S, 0.62 * S, 0.07 * S, 0.31 * S);
-      g.bezierCurveTo(0.09 * S, 0.13 * S, 0.24 * S, 0.03 * S, 0.35 * S, 0.11 * S);
-      g.bezierCurveTo(0.45 * S, 0.18 * S, 0.47 * S, 0.31 * S, 0.50 * S, 0.42 * S);
-      g.bezierCurveTo(0.53 * S, 0.31 * S, 0.55 * S, 0.18 * S, 0.65 * S, 0.11 * S);
-      g.bezierCurveTo(0.76 * S, 0.03 * S, 0.91 * S, 0.13 * S, 0.93 * S, 0.31 * S);
-      g.bezierCurveTo(0.97 * S, 0.62 * S, 0.82 * S, 0.88 * S, 0.55 * S, 0.99 * S);
-      g.closePath();
+      // broad flowing veil with a soft central notch
+      g.moveTo(0.42 * S, 0.99 * S);
+      g.bezierCurveTo(0.12 * S, 0.86 * S, 0.02 * S, 0.55 * S, 0.08 * S, 0.27 * S);
+      g.bezierCurveTo(0.12 * S, 0.1 * S, 0.3 * S, 0.02 * S, 0.4 * S, 0.14 * S);
+      g.bezierCurveTo(0.47 * S, 0.24 * S, 0.48 * S, 0.36 * S, 0.5 * S, 0.5 * S);
+      g.bezierCurveTo(0.52 * S, 0.36 * S, 0.53 * S, 0.24 * S, 0.6 * S, 0.14 * S);
+      g.bezierCurveTo(0.7 * S, 0.02 * S, 0.88 * S, 0.1 * S, 0.92 * S, 0.27 * S);
+      g.bezierCurveTo(0.98 * S, 0.55 * S, 0.88 * S, 0.86 * S, 0.58 * S, 0.99 * S);
     } else if (kind === "dorsal") {
-      // Sail fin: tall, gently convex front, concave back.
-      g.moveTo(0.16 * S, 0.99 * S);
-      g.bezierCurveTo(0.22 * S, 0.55 * S, 0.34 * S, 0.14 * S, 0.47 * S, 0.06 * S);
-      g.bezierCurveTo(0.60 * S, 0.20 * S, 0.72 * S, 0.62 * S, 0.86 * S, 0.99 * S);
-      g.closePath();
+      g.moveTo(0.14 * S, 0.99 * S);
+      g.bezierCurveTo(0.2 * S, 0.52 * S, 0.32 * S, 0.12 * S, 0.46 * S, 0.05 * S);
+      g.bezierCurveTo(0.6 * S, 0.18 * S, 0.74 * S, 0.6 * S, 0.88 * S, 0.99 * S);
     } else if (kind === "pectoral") {
-      // Rounded paddle.
       g.moveTo(0.34 * S, 0.99 * S);
-      g.bezierCurveTo(0.10 * S, 0.72 * S, 0.06 * S, 0.34 * S, 0.30 * S, 0.12 * S);
-      g.bezierCurveTo(0.58 * S, 0.00 * S, 0.90 * S, 0.22 * S, 0.84 * S, 0.56 * S);
-      g.bezierCurveTo(0.80 * S, 0.80 * S, 0.62 * S, 0.94 * S, 0.50 * S, 0.99 * S);
-      g.closePath();
+      g.bezierCurveTo(0.1 * S, 0.72 * S, 0.06 * S, 0.34 * S, 0.3 * S, 0.12 * S);
+      g.bezierCurveTo(0.58 * S, 0.0 * S, 0.9 * S, 0.22 * S, 0.84 * S, 0.56 * S);
+      g.bezierCurveTo(0.8 * S, 0.8 * S, 0.62 * S, 0.94 * S, 0.5 * S, 0.99 * S);
     } else {
-      // Small anal / pelvic fan.
-      g.moveTo(0.30 * S, 0.99 * S);
-      g.bezierCurveTo(0.16 * S, 0.66 * S, 0.24 * S, 0.24 * S, 0.50 * S, 0.14 * S);
-      g.bezierCurveTo(0.76 * S, 0.24 * S, 0.84 * S, 0.66 * S, 0.70 * S, 0.99 * S);
-      g.closePath();
+      g.moveTo(0.3 * S, 0.99 * S);
+      g.bezierCurveTo(0.16 * S, 0.66 * S, 0.24 * S, 0.24 * S, 0.5 * S, 0.14 * S);
+      g.bezierCurveTo(0.76 * S, 0.24 * S, 0.84 * S, 0.66 * S, 0.7 * S, 0.99 * S);
     }
-    g.fillStyle = goldRamp(g, S, baseX, baseY, 0.02 * S, 0.95 * S);
+    g.closePath();
+    g.fillStyle = goldRamp(g, baseX, baseY, 0.02 * S, 0.95 * S);
     g.fill();
-    g.restore();
 
-    // Fin rays (ribbing) fanning out from the base.
-    if (kind === "tail") drawRays(g, S, baseX, baseY, 1.18, 0.86 * S, 13, 0.16);
-    else if (kind === "dorsal") drawRays(g, S, baseX, baseY, 0.62, 0.94 * S, 8, 0.18);
-    else if (kind === "pectoral") drawRays(g, S, baseX, baseY, 0.78, 0.82 * S, 7, 0.18);
-    else drawRays(g, S, baseX, baseY, 0.7, 0.82 * S, 6, 0.18);
+    if (kind === "tail") drawRays(g, baseX, baseY, 1.2, 0.9 * S, 15, 0.16);
+    else if (kind === "dorsal") drawRays(g, baseX, baseY, 0.62, 0.94 * S, 8, 0.18);
+    else if (kind === "pectoral") drawRays(g, baseX, baseY, 0.78, 0.82 * S, 7, 0.18);
+    else drawRays(g, baseX, baseY, 0.7, 0.82 * S, 6, 0.18);
 
-    // Soft luminous rim so the translucent edge catches the light.
     g.save();
     g.globalCompositeOperation = "lighter";
-    g.globalAlpha = 0.22;
-    g.fillStyle = goldRamp(g, S, baseX, baseY, 0.02 * S, 0.98 * S);
+    g.globalAlpha = 0.18;
     g.fill();
     g.restore();
 
     var tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    tex.needsUpdate = true;
     return tex;
   }
 
-  /* ----------------------- Procedural scale bump map ----------------------- */
-  function makeScaleTexture() {
-    var S = 512;
-    var c = document.createElement("canvas");
-    c.width = c.height = S;
-    var g = c.getContext("2d");
-    g.fillStyle = "#8a8a8a";
-    g.fillRect(0, 0, S, S);
-    var cols = 11;
-    var rows = 15;
-    var w = S / cols;
-    var h = S / rows;
-    for (var r = -1; r <= rows; r++) {
-      for (var i = -1; i <= cols; i++) {
-        var x = i * w + (r & 1 ? w * 0.5 : 0);
-        var y = r * h;
-        var rad = w * 0.62;
-        var grd = g.createRadialGradient(x, y - rad * 0.35, 1, x, y, rad);
-        grd.addColorStop(0, "rgba(255,255,255,0.6)");
-        grd.addColorStop(1, "rgba(235,235,235,0)");
-        g.fillStyle = grd;
-        g.beginPath();
-        g.arc(x, y, rad, 0, Math.PI * 2);
-        g.fill();
-        g.strokeStyle = "rgba(104,104,104,0.5)";
-        g.lineWidth = 1.6;
-        g.beginPath();
-        g.arc(x, y, rad * 0.9, 0.08 * Math.PI, 0.92 * Math.PI);
-        g.stroke();
-      }
-    }
-    var tex = new THREE.CanvasTexture(c);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(7, 4);
-    return tex;
-  }
-
-  /* ---------------------- Vertex-shader wave injection ---------------------- */
-  // Deforms a material's vertices with a travelling sine wave. `axis` selects
-  // which local axis is displaced (0..1), `grow` selects where the amplitude
-  // builds up (0 = x/uv.x, 1 = y/uv.y).
-  var animatedMaterials = [];
-
-  function addWave(material, opts) {
-    var unif = {
-      uTime: { value: 0 },
-      uAmp: { value: opts.amp },
-      uFreq: { value: opts.freq },
-      uSpeed: { value: opts.speed },
-      uAxis: { value: opts.axis }, // 0 -> z (fin normal), 1 -> z from body x
-      uGrow: { value: opts.grow }, // 0 -> uv.y (fin), 1 -> body length
-      uHeadX: { value: opts.headX || 0 },
-      uLen: { value: opts.len || 1 }
+  /* --------------------- Fresnel rim shader injection -------------------- */
+  function addRim(material, strength, hex) {
+    var uni = {
+      uRimStrength: { value: strength },
+      uRimColor: { value: new THREE.Color(hex) }
     };
-
+    material.userData.rim = uni;
     material.onBeforeCompile = function (shader) {
-      shader.uniforms.uTime = unif.uTime;
-      shader.uniforms.uAmp = unif.uAmp;
-      shader.uniforms.uFreq = unif.uFreq;
-      shader.uniforms.uSpeed = unif.uSpeed;
-      shader.uniforms.uAxis = unif.uAxis;
-      shader.uniforms.uGrow = unif.uGrow;
-      shader.uniforms.uHeadX = unif.uHeadX;
-      shader.uniforms.uLen = unif.uLen;
-
-      shader.vertexShader =
-        "uniform float uTime;\nuniform float uAmp;\nuniform float uFreq;\n" +
-        "uniform float uSpeed;\nuniform float uAxis;\nuniform float uGrow;\n" +
-        "uniform float uHeadX;\nuniform float uLen;\n" +
-        shader.vertexShader;
-
-      shader.vertexShader = shader.vertexShader.replace(
-        "#include <begin_vertex>",
-        [
-          "#include <begin_vertex>",
-          "float waveGrow;",
-          "float waveCoord;",
-          "if (uGrow > 0.5) {",
-          "  waveGrow = clamp((uHeadX - transformed.x) / uLen, 0.0, 1.0);",
-          "  waveCoord = waveGrow;",
-          "} else {",
-          "  #ifdef USE_UV",
-          "  waveGrow = uv.y;",
-          "  waveCoord = uv.x;",
-          "  #else",
-          "  waveGrow = 0.0;",
-          "  waveCoord = 0.0;",
-          "  #endif",
-          "}",
-          "float waveAmp = uAmp * pow(waveGrow, 1.6);",
-          "float waveVal = sin(uTime * uSpeed - waveCoord * uFreq + waveGrow * 2.0);",
-          "transformed.z += waveAmp * waveVal;",
-          "transformed.y += waveAmp * 0.12 * waveVal;"
-        ].join("\n")
-      );
+      shader.uniforms.uRimStrength = uni.uRimStrength;
+      shader.uniforms.uRimColor = uni.uRimColor;
+      shader.fragmentShader =
+        "uniform vec3 uRimColor;\nuniform float uRimStrength;\n" +
+        shader.fragmentShader.replace(
+          "#include <opaque_fragment>",
+          "vec3 rimDir = normalize( vViewPosition );\n" +
+            "float rimF = 1.0 - clamp( dot( normalize( normal ), rimDir ), 0.0, 1.0 );\n" +
+            "rimF = pow( rimF, 3.0 );\n" +
+            "outgoingLight += uRimColor * ( uRimStrength * rimF );\n" +
+            "#include <opaque_fragment>"
+        );
     };
-
-    material.userData.wave = unif;
-    animatedMaterials.push(unif);
-    return unif;
+    material.customProgramCacheKey = function () {
+      return "rim_" + strength;
+    };
+    return material;
   }
 
-  /* ------------------------------- Fish body ------------------------------- */
-  var BODY_LEN = 2.6;
-  var BODY_R = 0.62;
+  /* ============================== ARMATURE =============================== */
+  var NOSE_X = 1.32; // rounded snout tip
+  var TAIL_X = -1.3; // caudal peduncle / tail base
+  var BODY_LEN = NOSE_X - TAIL_X;
+  var SPINE_COUNT = 10;
+  var ROOT_X = 0.95; // head end of the spine
+  var TAIL_BONES = 3;
+  var TAIL_SEG = 0.6;
+  var TAIL_LEN = TAIL_SEG * TAIL_BONES; // 1.8
+
+  // Anatomical profile control curves, u = 0 (tail) .. 1 (nose).
+  // High arched back, deep belly, laterally compressed (rZ << rTop).
+  var C_TOP = [0.05, 0.22, 0.42, 0.62, 0.74, 0.79, 0.75, 0.64, 0.44, 0.13];
+  var C_BOT = [0.05, 0.24, 0.47, 0.66, 0.74, 0.72, 0.66, 0.55, 0.40, 0.15];
+  var C_Z = [0.03, 0.13, 0.24, 0.34, 0.41, 0.44, 0.41, 0.35, 0.26, 0.10];
+
+  function bodyU(x) {
+    return clamp((x - TAIL_X) / BODY_LEN, 0, 1);
+  }
+
+  var spineBones = [];
+  var tailBones = [];
+  var allBones = [];
+  var boneX = [];
+
+  function makeSpring() {
+    return { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+  }
+  function springTo(s, tx, ty, tz, k, d, dt) {
+    var steps = Math.min(6, Math.max(1, Math.ceil(dt / 0.0167)));
+    var h = dt / steps;
+    for (var i = 0; i < steps; i++) {
+      s.vx += ((tx - s.x) * k - s.vx * d) * h;
+      s.x += s.vx * h;
+      s.vy += ((ty - s.y) * k - s.vy * d) * h;
+      s.y += s.vy * h;
+      s.vz += ((tz - s.z) * k - s.vz * d) * h;
+      s.z += s.vz * h;
+    }
+  }
+
+  function buildSpine() {
+    var prev = 0;
+    for (var i = 0; i < SPINE_COUNT; i++) {
+      var t = SPINE_COUNT === 1 ? 0 : i / (SPINE_COUNT - 1);
+      var x = ROOT_X + (TAIL_X - ROOT_X) * t;
+      boneX.push(x);
+      var b = new THREE.Bone();
+      b.position.set(i === 0 ? x : x - prev, 0, 0);
+      b.userData.spr = makeSpring();
+      prev = x;
+      spineBones.push(b);
+      allBones.push(b);
+      if (i > 0) spineBones[i - 1].add(b);
+    }
+    prev = TAIL_X;
+    for (var j = 0; j < TAIL_BONES; j++) {
+      var tx = TAIL_X - TAIL_SEG * (j + 1);
+      var tb = new THREE.Bone();
+      tb.position.set(tx - prev, 0, 0);
+      tb.userData.spr = makeSpring();
+      prev = tx;
+      tailBones.push(tb);
+      allBones.push(tb);
+      if (j === 0) spineBones[SPINE_COUNT - 1].add(tb);
+      else tailBones[j - 1].add(tb);
+    }
+  }
+  function boneIndexAtX(x) {
+    var t = clamp((ROOT_X - x) / (ROOT_X - TAIL_X), 0, 1);
+    return Math.min(SPINE_COUNT - 1, Math.round(t * (SPINE_COUNT - 1)));
+  }
+
+  /* --------------------------- Body geometry ----------------------------- */
+  var C_BELLY = new THREE.Color("#ffe9c2");
+  var C_MID = new THREE.Color("#f4a233");
+  var C_BACK = new THREE.Color("#d9611a");
+  var C_HEAD = new THREE.Color("#f8c94e");
 
   function buildBodyGeometry() {
-    // Normalised profile (radius, length) from tail base to nose tip.
-    var profile = [
-      [0.05, 0.0], [0.20, 0.08], [0.42, 0.17], [0.68, 0.28], [0.88, 0.38],
-      [0.99, 0.47], [1.0, 0.55], [0.97, 0.63], [0.92, 0.71], [0.86, 0.78],
-      [0.78, 0.85], [0.66, 0.91], [0.48, 0.96], [0.26, 1.0], [0.06, 1.02]
-    ];
-    var pts = profile.map(function (p) {
-      return new THREE.Vector2(p[0] * BODY_R, p[1] * BODY_LEN);
-    });
-    var geo = new THREE.LatheGeometry(pts, 64);
-    geo.rotateZ(-Math.PI / 2); // align the body axis with +X (nose forward)
-    geo.center();
-    geo.computeBoundingBox();
-
-    // Gold gradient painted into vertex colours.
-    var pos = geo.attributes.position;
-    var colors = new Float32Array(pos.count * 3);
-    var cBelly = new THREE.Color("#ffe6b8");
-    var cMid = new THREE.Color("#f6a236");
-    var cBack = new THREE.Color("#df6317");
-    var cHead = new THREE.Color("#f7c34c");
+    var RINGS = 76;
+    var SEGS = 48;
+    var geo = new THREE.BufferGeometry();
+    var posArr = [];
+    var uvArr = [];
+    var colArr = [];
     var tmp = new THREE.Color();
-    for (var i = 0; i < pos.count; i++) {
-      var x = pos.getX(i);
-      var y = pos.getY(i);
-      var topness = clamp((y / BODY_R) * 0.5 + 0.5, 0, 1);
-      tmp.copy(cBelly);
-      tmp.lerp(cMid, smoothstep(0.26, 0.6, topness));
-      tmp.lerp(cBack, smoothstep(0.62, 0.98, topness));
-      tmp.lerp(cHead, smoothstep(0.15, 1.32, x) * 0.32);
-      colors[i * 3] = tmp.r;
-      colors[i * 3 + 1] = tmp.g;
-      colors[i * 3 + 2] = tmp.b;
+
+    function pushRing(u, x, scaleCenter) {
+      var rTop = sampleCurve(C_TOP, u);
+      var rBot = sampleCurve(C_BOT, u);
+      var rZ = sampleCurve(C_Z, u);
+      var rMid = 0.5 * (rTop + rBot);
+      var rAmp = 0.5 * (rTop - rBot);
+      for (var si = 0; si < SEGS; si++) {
+        var th = (si / SEGS) * TAU;
+        var s = Math.sin(th);
+        var cz = Math.cos(th);
+        var r = rMid + rAmp * s;
+        var y = r * s;
+        var z = rZ * cz;
+        if (scaleCenter) {
+          y *= 0.0;
+          z *= 0.0;
+        }
+        posArr.push(x, y, z);
+        uvArr.push(si / SEGS, u);
+        // colour by how "top" the vertex is on the cross-section
+        var topness = clamp(s * 0.5 + 0.5, 0, 1);
+        tmp.copy(C_BELLY);
+        tmp.lerp(C_MID, smoothstep(0.24, 0.6, topness));
+        tmp.lerp(C_BACK, smoothstep(0.62, 1.0, topness));
+        tmp.lerp(C_HEAD, smoothstep(0.72, 1.15, u) * 0.4);
+        colArr.push(tmp.r, tmp.g, tmp.b);
+      }
     }
-    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+
+    for (var ri = 0; ri < RINGS; ri++) {
+      var u = ri / (RINGS - 1);
+      pushRing(u, TAIL_X + BODY_LEN * u, false);
+    }
+
+    var idx = [];
+    for (var rr = 0; rr < RINGS - 1; rr++) {
+      for (var sj = 0; sj < SEGS; sj++) {
+        var a = rr * SEGS + sj;
+        var b = rr * SEGS + ((sj + 1) % SEGS);
+        var c2 = (rr + 1) * SEGS + ((sj + 1) % SEGS);
+        var d = (rr + 1) * SEGS + sj;
+        idx.push(a, b, d, b, c2, d);
+      }
+    }
+
+    // Nose + tail apex caps.
+    var noseIdx = posArr.length / 3;
+    posArr.push(NOSE_X + 0.05, 0, 0);
+    uvArr.push(0.5, 1);
+    colArr.push(C_HEAD.r, C_HEAD.g, C_HEAD.b);
+    var tailIdx = posArr.length / 3;
+    posArr.push(TAIL_X - 0.04, 0, 0);
+    uvArr.push(0.5, 0);
+    colArr.push(C_MID.r, C_MID.g, C_MID.b);
+
+    var lastRing = (RINGS - 1) * SEGS;
+    var firstRing = 0;
+    for (var s2 = 0; s2 < SEGS; s2++) {
+      var n0 = lastRing + s2;
+      var n1 = lastRing + ((s2 + 1) % SEGS);
+      idx.push(noseIdx, n0, n1);
+      var t0 = firstRing + ((s2 + 1) % SEGS);
+      var t1 = firstRing + s2;
+      idx.push(tailIdx, t0, t1);
+    }
+
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(posArr, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvArr, 2));
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(colArr, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+
+    // Winding safety: make sure normals face outward (away from the spine axis).
+    var nrm = geo.attributes.normal;
+    var p = geo.attributes.position;
+    var outwardDot = 0;
+    var step = Math.max(1, Math.floor(p.count / 200));
+    for (var vi = 0; vi < p.count; vi += step) {
+      var vx = p.getX(vi);
+      var vy = p.getY(vi);
+      var vz = p.getZ(vi);
+      var rl = Math.sqrt(vy * vy + vz * vz) || 1;
+      outwardDot += (nrm.getX(vi) * 0 + nrm.getY(vi) * (vy / rl) + nrm.getZ(vi) * (vz / rl));
+    }
+    if (outwardDot < 0) {
+      var idxArr = geo.index.array;
+      for (var f = 0; f < idxArr.length; f += 3) {
+        var swap = idxArr[f + 1];
+        idxArr[f + 1] = idxArr[f + 2];
+        idxArr[f + 2] = swap;
+      }
+      geo.index.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
     return geo;
   }
 
+  function skinByX(geo, boneList, x0, x1) {
+    var pos = geo.attributes.position;
+    var n = pos.count;
+    var skinIndex = new Uint16Array(n * 4);
+    var skinWeight = new Float32Array(n * 4);
+    var span = x0 - x1;
+    var last = boneList.length - 1;
+    for (var i = 0; i < n; i++) {
+      var t = clamp((x0 - pos.getX(i)) / span, 0, 1);
+      var p = t * last;
+      var i0 = Math.min(last, Math.floor(p));
+      var i1 = Math.min(last, i0 + 1);
+      var fw = p - i0;
+      skinIndex[i * 4] = boneList[i0];
+      skinWeight[i * 4] = 1 - fw;
+      skinIndex[i * 4 + 1] = boneList[i1];
+      skinWeight[i * 4 + 1] = fw;
+    }
+    geo.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(skinIndex, 4));
+    geo.setAttribute("skinWeight", new THREE.Float32BufferAttribute(skinWeight, 4));
+  }
+
+  /* ---------------------------- Tail geometry ---------------------------- */
+  var tailBoneList = null; // filled after spine exists
+  function buildTailMembrane(opts) {
+    var ROWS = 18;
+    var COLS = 14;
+    var geo = new THREE.BufferGeometry();
+    var posArr = [];
+    var uvArr = [];
+    var dir = opts.dir; // +1 upper lobe, -1 lower region
+    var zOff = opts.zOff || 0;
+    var splay = opts.splay || 0;
+    var HALF = opts.half;
+    var len = opts.len;
+    var edge = opts.flare;
+
+    for (var r = 0; r < ROWS; r++) {
+      var t = r / (ROWS - 1); // 0 base .. 1 tip
+      var x = TAIL_X - len * t;
+      var h = HALF * (0.12 + 0.88 * Math.pow(t, 0.72)) * edge;
+      for (var c = 0; c < COLS; c++) {
+        var sN = c / (COLS - 1); // 0 .. 1 across
+        var s = sN * 2 - 1; // -1 .. 1
+        // wavy trailing edge + soft central notch near the tip
+        var wave = Math.sin(t * 9.0 + sN * 6.0) * 0.035 * t;
+        var notch = t > 0.55 ? (1 - Math.abs(s)) * (t - 0.55) * 0.5 : 0;
+        var y = dir * (s * h) * (1 - notch) + wave;
+        var z = zOff + splay * t * s;
+        posArr.push(x, y, z);
+        uvArr.push(sN, t);
+      }
+    }
+    var idx = [];
+    for (var rr = 0; rr < ROWS - 1; rr++) {
+      for (var cc = 0; cc < COLS - 1; cc++) {
+        var a = rr * COLS + cc;
+        var b = rr * COLS + cc + 1;
+        var d = (rr + 1) * COLS + cc;
+        var e = (rr + 1) * COLS + cc + 1;
+        idx.push(a, b, d, b, e, d);
+      }
+    }
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(posArr, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvArr, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  function buildTailGeometries() {
+    // three overlapping membranes = translucent veil with volume
+    return [
+      buildTailMembrane({ dir: 1, half: 0.92, len: TAIL_LEN, flare: 1.0, zOff: 0, splay: 0 }),
+      buildTailMembrane({ dir: 1, half: 0.8, len: TAIL_LEN * 0.94, flare: 0.86, zOff: 0.05, splay: 0.16 }),
+      buildTailMembrane({ dir: -1, half: 0.8, len: TAIL_LEN * 0.94, flare: 0.86, zOff: -0.05, splay: 0.16 })
+    ];
+  }
+
+  /* ------------------------------ Materials ------------------------------ */
+  var scaleMap = makeScaleNormalMap();
+  var bodyMat = addRim(
+    new THREE.MeshPhysicalMaterial({
+      vertexColors: true,
+      roughness: 0.26,
+      metalness: 0.18,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.14,
+      sheen: 0.85,
+      sheenColor: new THREE.Color("#ffd98a"),
+      sheenRoughness: 0.42,
+      iridescence: 0.72,
+      iridescenceIOR: 1.34,
+      iridescenceThicknessRange: [120, 640],
+      normalMap: scaleMap,
+      normalScale: new THREE.Vector2(0.62, 0.62),
+      envMapIntensity: 1.2
+    }),
+    0.55,
+    "#ffb45a"
+  );
+
+  var tailMaps = null;
+  function tailMaterial() {
+    return addRim(
+      new THREE.MeshPhysicalMaterial({
+        map: tailMaps.tail,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        alphaTest: 0.03,
+        roughness: 0.32,
+        metalness: 0.0,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.3,
+        transmission: 0.35,
+        thickness: 0.14,
+        ior: 1.34,
+        attenuationColor: new THREE.Color("#ffb44d"),
+        attenuationDistance: 1.1,
+        emissive: new THREE.Color("#e8861c"),
+        emissiveIntensity: 0.08,
+        envMapIntensity: 1.0
+      }),
+      0.85,
+      "#ffcf8a"
+    );
+  }
+  function finMaterial(kind) {
+    return addRim(
+      new THREE.MeshPhysicalMaterial({
+        map: tailMaps[kind],
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        alphaTest: 0.03,
+        roughness: 0.36,
+        metalness: 0.0,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.34,
+        transmission: 0.32,
+        thickness: 0.14,
+        ior: 1.34,
+        attenuationColor: new THREE.Color("#ffb44d"),
+        attenuationDistance: 1.1,
+        emissive: new THREE.Color("#e8861c"),
+        emissiveIntensity: 0.07,
+        envMapIntensity: 1.0
+      }),
+      0.75,
+      "#ffcf8a"
+    );
+  }
+
+  /* =============================== BUILD ================================= */
   var fish = new THREE.Group();
-  var root = new THREE.Group(); // extra group for idle micro-motion
-  fish.add(root);
+  var rig = new THREE.Group();
+  fish.add(rig);
   scene.add(fish);
 
-  var bodyGeo = buildBodyGeometry();
-  var scaleTex = makeScaleTexture();
-  var bodyMat = new THREE.MeshPhysicalMaterial({
-    vertexColors: true,
-    roughness: 0.34,
-    metalness: 0.2,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.2,
-    sheen: 0.7,
-    sheenColor: new THREE.Color("#ffd98a"),
-    sheenRoughness: 0.5,
-    bumpMap: scaleTex,
-    bumpScale: 0.016,
-    envMapIntensity: 1.15
-  });
-  var maxX = bodyGeo.boundingBox.max.x;
-  var bodyUniform = addWave(bodyMat, {
-    amp: 0.13,
-    freq: 4.2,
-    speed: 2.0,
-    grow: 1,
-    headX: maxX,
-    len: BODY_LEN * 1.02
-  });
-  var bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-  root.add(bodyMesh);
+  buildSpine();
+  tailBoneList = [SPINE_COUNT - 1, SPINE_COUNT, SPINE_COUNT + 1, SPINE_COUNT + 2];
 
-  /* ------------------------------ Fish parts ------------------------------ */
-  function addFin(w, h, kind, amp, freq, speed) {
-    var geo = new THREE.PlaneGeometry(w, h, 4, 10);
-    geo.translate(0, h / 2, 0); // base at y = 0, tip at y = h
-    var tex = finCanvas(kind);
-    var mat = new THREE.MeshPhysicalMaterial({
-      map: tex,
-      transparent: true,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      roughness: 0.4,
-      metalness: 0.0,
-      alphaTest: 0.02,
-      envMapIntensity: 0.9,
-      emissive: new THREE.Color("#e8861c"),
-      emissiveIntensity: 0.06
-    });
-    var unif = addWave(mat, { amp: amp, freq: freq, speed: speed, grow: 0 });
-    unif.amp0 = amp;
-    unif.speed0 = speed;
-    var mesh = new THREE.Mesh(geo, mat);
-    mesh.userData.unif = unif;
+  rig.add(spineBones[0]);
+  rig.updateMatrixWorld(true);
+  var skeleton = new THREE.Skeleton(allBones);
+  var IDENTITY = new THREE.Matrix4();
+
+  var bodyGeo = buildBodyGeometry();
+  skinByX(bodyGeo, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], ROOT_X, TAIL_X);
+  var bodyMesh = new THREE.SkinnedMesh(bodyGeo, bodyMat);
+  bodyMesh.frustumCulled = false;
+  bodyMesh.bind(skeleton, IDENTITY);
+  rig.add(bodyMesh);
+
+  tailMaps = { tail: finTexture("tail"), dorsal: finTexture("dorsal"), pectoral: finTexture("pectoral"), anal: finTexture("anal") };
+  var tailMat = tailMaterial();
+  var tailGeos = buildTailGeometries();
+  var tailMeshes = [];
+  for (var tg = 0; tg < tailGeos.length; tg++) {
+    skinByX(tailGeos[tg], tailBoneList, TAIL_X, TAIL_X - TAIL_LEN);
+    var tm = new THREE.SkinnedMesh(tailGeos[tg], tailMat);
+    tm.frustumCulled = false;
+    tm.renderOrder = 2;
+    tm.bind(skeleton, IDENTITY);
+    rig.add(tm);
+    tailMeshes.push(tm);
+  }
+
+  /* ------------------------------ Fin meshes ----------------------------- */
+  function makeFinMesh(w, h, kind, segH, bend) {
+    var geo = new THREE.PlaneGeometry(w, h, 5, segH || 9);
+    // give the fin a gentle backward curl so it never reads as a flat card
+    var p = geo.attributes.position;
+    for (var i = 0; i < p.count; i++) {
+      var yy = p.getY(i) + h / 2; // 0 base .. h tip
+      var t = yy / h;
+      p.setZ(i, p.getZ(i) - bend * t * t);
+      p.setX(i, p.getX(i) * (0.75 + 0.25 * (1 - t)));
+    }
+    p.needsUpdate = true;
+    geo.translate(0, h / 2, 0);
+    geo.computeVertexNormals();
+    var mesh = new THREE.Mesh(geo, finMaterial(kind));
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 1;
     return mesh;
   }
+  function makeFinBone(parentBone, parentX, px, py, pz) {
+    var b = new THREE.Bone();
+    b.position.set(px - parentX, py, pz);
+    b.userData.spr = makeSpring();
+    parentBone.add(b);
+    return b;
+  }
 
-  // Dorsal (sail on the back).
-  var dorsal = addFin(1.25, 0.62, "dorsal", 0.14, 3.0, 3.0);
-  dorsal.position.set(-0.16, 0.4, 0);
-  root.add(dorsal);
+  var dorsalAtX = 0.18;
+  var dorsalIdx = boneIndexAtX(dorsalAtX);
+  var dorsalU = bodyU(dorsalAtX);
+  var dorsalBone = makeFinBone(spineBones[dorsalIdx], boneX[dorsalIdx], dorsalAtX, sampleCurve(C_TOP, dorsalU) * 0.86, 0);
+  var dorsalMesh = makeFinMesh(1.25, 0.66, "dorsal", 10, 0.16);
+  dorsalBone.add(dorsalMesh);
 
-  // Pectoral fins (one per side).
-  var pectoralL = addFin(0.52, 0.52, "pectoral", 0.13, 2.2, 4.6);
-  pectoralL.position.set(0.32, -0.16, 0.46);
-  pectoralL.rotation.set(-0.55, -0.25, 2.15);
-  root.add(pectoralL);
+  var pecAtX = 0.34;
+  var pecIdx = boneIndexAtX(pecAtX);
+  var pecU = bodyU(pecAtX);
+  var pecSpread = sampleCurve(C_Z, pecU) * 0.94;
+  var pecY = -0.06;
+  var pecLBone = makeFinBone(spineBones[pecIdx], boneX[pecIdx], pecAtX, pecY, pecSpread);
+  var pecLMesh = makeFinMesh(0.54, 0.56, "pectoral", 7, 0.22);
+  pecLMesh.rotation.set(-0.5, -0.2, 2.05);
+  pecLBone.add(pecLMesh);
 
-  var pectoralR = addFin(0.52, 0.52, "pectoral", 0.13, 2.2, 4.6);
-  pectoralR.position.set(0.32, -0.16, -0.46);
-  pectoralR.rotation.set(0.55, 0.25, 2.15);
-  root.add(pectoralR);
+  var pecRBone = makeFinBone(spineBones[pecIdx], boneX[pecIdx], pecAtX, pecY, -pecSpread);
+  var pecRMesh = makeFinMesh(0.54, 0.56, "pectoral", 7, 0.22);
+  pecRMesh.rotation.set(0.5, 0.2, 2.05);
+  pecRBone.add(pecRMesh);
 
-  // Anal / pelvic fin (underside, near the tail).
-  var anal = addFin(0.56, 0.5, "anal", 0.13, 2.4, 3.2);
-  anal.position.set(-0.68, -0.44, 0);
-  anal.rotation.z = 2.55;
-  root.add(anal);
+  var analAtX = -0.5;
+  var analIdx = boneIndexAtX(analAtX);
+  var analU = bodyU(analAtX);
+  var analBone = makeFinBone(spineBones[analIdx], boneX[analIdx], analAtX, -sampleCurve(C_BOT, analU) * 0.82, 0);
+  var analMesh = makeFinMesh(0.56, 0.5, "anal", 7, 0.14);
+  analMesh.rotation.z = 2.5;
+  analBone.add(analMesh);
 
-  // Veiltail: two flowing lobes forming a soft V.
-  var tailGroup = new THREE.Group();
-  tailGroup.position.set(-1.24, 0, 0);
-  tailGroup.rotation.z = Math.PI / 2; // grow the fin toward -X (backwards)
-  root.add(tailGroup);
+  /* ------------------------------- Head parts ------------------------------- */
+  var headBone = new THREE.Bone();
+  headBone.position.set(0, 0, 0);
+  headBone.userData.spr = makeSpring();
+  spineBones[0].add(headBone);
 
-  var tailA = addFin(1.6, 1.85, "tail", 0.42, 2.4, 2.6);
-  tailA.rotation.set(0.45, 0, 0);
-  tailGroup.add(tailA);
-
-  var tailB = addFin(1.6, 1.85, "tail", 0.42, 2.4, 2.6);
-  tailB.rotation.set(-0.45, 0, 0);
-  tailGroup.add(tailB);
-
-  /* --------------------------------- Eyes --------------------------------- */
-  function addEye(side) {
+  // Eye is authored facing local +Z; the right eye is rotated 180 deg so both
+  // pupils bulge outward on their own side instead of into the head.
+  function buildEye() {
     var eye = new THREE.Group();
-    var ballR = 0.135;
+    var ballR = 0.15;
     var ball = new THREE.Mesh(
-      new THREE.SphereGeometry(ballR, 24, 20),
-      new THREE.MeshPhysicalMaterial({
-        color: 0xfbf7ec,
-        roughness: 0.18,
-        clearcoat: 1,
-        clearcoatRoughness: 0.05,
-        envMapIntensity: 1.2
-      })
+      new THREE.SphereGeometry(ballR, 26, 22),
+      new THREE.MeshPhysicalMaterial({ color: 0xfbf7ec, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 1.3 })
     );
     eye.add(ball);
-
+    var iris = new THREE.Mesh(
+      new THREE.SphereGeometry(0.105, 22, 18),
+      new THREE.MeshPhysicalMaterial({ color: 0x2a2118, roughness: 0.25, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08 })
+    );
+    iris.position.set(0, 0, ballR * 0.74);
+    eye.add(iris);
     var pupil = new THREE.Mesh(
-      new THREE.SphereGeometry(0.082, 20, 16),
-      new THREE.MeshPhysicalMaterial({ color: 0x141210, roughness: 0.25, clearcoat: 1 })
+      new THREE.SphereGeometry(0.055, 16, 14),
+      new THREE.MeshPhysicalMaterial({ color: 0x090807, roughness: 0.15, clearcoat: 1 })
     );
-    pupil.position.set(0.03, 0, ballR * 0.86);
+    pupil.position.set(0, 0, ballR * 0.86);
     eye.add(pupil);
-
-    var glint = new THREE.Mesh(
-      new THREE.SphereGeometry(0.026, 12, 10),
-      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    // convex clear cornea gives the wet lens dome (patch centred on +Z)
+    var cornea = new THREE.Mesh(
+      new THREE.SphereGeometry(ballR * 1.16, 24, 20, Math.PI * 0.2, Math.PI * 0.6, Math.PI * 0.18, Math.PI * 0.64),
+      new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        roughness: 0.04,
+        metalness: 0,
+        clearcoat: 1,
+        clearcoatRoughness: 0.02,
+        transmission: 0.9,
+        thickness: 0.12,
+        ior: 1.38,
+        transparent: true,
+        envMapIntensity: 1.6
+      })
     );
-    glint.position.set(0.05, 0.05, ballR * 0.98);
+    cornea.position.set(0, 0, 0);
+    eye.add(cornea);
+    var glint = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    glint.position.set(0.02, 0.06, ballR * 1.02);
     eye.add(glint);
-
-    eye.position.set(0.94, 0.17, side * 0.4);
     return eye;
   }
-  root.add(addEye(1));
-  root.add(addEye(-1));
 
-  // Small mouth hint at the nose.
+  var eyeX = NOSE_X - 0.36;
+  var eyeU = bodyU(eyeX);
+  var eyeZ = sampleCurve(C_Z, eyeU) * 1.0;
+  var eyeY = sampleCurve(C_TOP, eyeU) * 0.42;
+  var leftEye = buildEye();
+  leftEye.position.set(eyeX - boneX[0], eyeY, eyeZ);
+  headBone.add(leftEye);
+  var rightEye = buildEye();
+  rightEye.position.set(eyeX - boneX[0], eyeY, -eyeZ);
+  rightEye.rotation.y = Math.PI;
+  headBone.add(rightEye);
+
   var mouth = new THREE.Mesh(
-    new THREE.SphereGeometry(0.09, 16, 12),
-    new THREE.MeshPhysicalMaterial({ color: 0x9c4310, roughness: 0.5 })
+    new THREE.SphereGeometry(0.1, 18, 14),
+    new THREE.MeshPhysicalMaterial({ color: 0x9c4310, roughness: 0.5, clearcoat: 0.4 })
   );
-  mouth.scale.set(1.0, 0.55, 0.7);
-  mouth.position.set(1.31, -0.04, 0);
-  root.add(mouth);
+  mouth.scale.set(1.0, 0.5, 0.72);
+  mouth.position.set(NOSE_X + 0.01 - boneX[0], -0.06, 0);
+  headBone.add(mouth);
 
-  /* --------------------------- Motion state --------------------------- */
+  var gillL = new THREE.Mesh(
+    new THREE.TorusGeometry(0.24, 0.012, 8, 20, Math.PI * 1.1),
+    new THREE.MeshPhysicalMaterial({ color: 0xc2591a, roughness: 0.6 })
+  );
+  gillL.rotation.set(0, Math.PI / 2, -0.4);
+  gillL.position.set(0.58 - boneX[0], 0.02, sampleCurve(C_Z, bodyU(0.58)) * 0.98);
+  headBone.add(gillL);
+  var gillR = gillL.clone();
+  gillR.rotation.set(0, -Math.PI / 2, 2.6);
+  gillR.position.z *= -1;
+  headBone.add(gillR);
+
+  /* ============================ MOTION STATE ============================= */
   var progress = 0;
   var target = 0;
   var maxScroll = 1;
   var lastScrollAt = -1e9;
-  var activity = 0; // 0..1 based on recent scroll activity
-  var idleMix = 0; // 0..1 idle vs scrolling
+  var activity = 0;
+  var idleMix = 0;
   var fishScale = 1;
   var marginX = 1;
   var marginY = 1;
@@ -524,11 +871,20 @@
   var mouseX = 0;
   var mouseY = 0;
 
+  var wavePhase = 0;
+  var padPhase = 0;
+  var moodTimer = 1.4;
+  var mood = "cruise";
+  var speed = 1.0;
+  var speedNorm = 0.4;
+  var turnRate = 0;
+  var lastHeading = 0;
+  var headingInit = false;
+
   var w = 0;
   var h = 0;
   var running = false;
   var rafId = null;
-  var lastT = 0;
   var clock = new THREE.Clock();
 
   /* ----------------------------- Sizing ----------------------------- */
@@ -543,11 +899,9 @@
     visW = visH * camera.aspect;
     fishScale = clamp((0.42 * Math.min(visW, visH)) / BODY_LEN, 0.5, 1.35);
     fish.scale.setScalar(fishScale);
-    // Keep the whole fish (nose + long veiltail) inside the viewport.
-    marginX = Math.max(0.4, visW * 0.5 - 3.2 * fishScale);
+    marginX = Math.max(0.4, visW * 0.5 - 3.3 * fishScale);
     marginY = Math.max(0.4, visH * 0.5 - 1.6 * fishScale);
   }
-
   function computeScroll() {
     var top = window.pageYOffset || document.documentElement.scrollTop || 0;
     maxScroll = Math.max(1, document.documentElement.scrollHeight - h);
@@ -560,41 +914,117 @@
     var y = (0.24 - p * 0.5) * visH + Math.sin(p * Math.PI * 2.1 + 1.0) * visH * 0.04;
     return { x: clamp(x, -marginX, marginX), y: clamp(y, -marginY, marginY) };
   }
-
   function pickWander() {
     wander.x = (Math.random() * 2 - 1) * marginX;
     wander.y = (Math.random() * 2 - 1) * marginY;
     wander.timer = 2.6 + Math.random() * 3.0;
   }
 
-  /* --------------------------------- Loop --------------------------------- */
+  /* --------------------------- Orientation --------------------------- */
   function updateOrientation(dt) {
     vVel.set(curX - prevX, curY - prevY, 0);
     var sp = vVel.length();
     if (sp > 0.015) {
       vDir.copy(vVel).normalize();
+      var heading = Math.atan2(vVel.y, vVel.x);
+      if (headingInit) turnRate = wrapAngle(heading - lastHeading) / Math.max(dt, 0.001);
+      lastHeading = heading;
+      headingInit = true;
+
       vRight.crossVectors(vDir, vUp.set(0, 1, 0));
       if (vRight.lengthSq() < 1e-5) vRight.set(0, 0, 1);
       vRight.normalize();
       vUp.crossVectors(vRight, vDir).normalize();
       tmpMat.makeBasis(vDir, vUp, vRight);
       targetQuat.setFromRotationMatrix(tmpMat);
+    } else {
+      turnRate += (0 - turnRate) * Math.min(1, dt * 3);
     }
     baseQuat.slerp(targetQuat, Math.min(1, dt * 4.5));
   }
 
-  function tick(t) {
-    var dt = Math.min(clock.getDelta(), 0.05);
-    var scrollActive = performance.now() - lastScrollAt < 160;
-    var targetActivity = scrollActive ? 1 : 0;
-    activity += (targetActivity - activity) * 0.07;
+  /* ------------------------- Skeletal animation ------------------------- */
+  function animateSkeleton(dt, t) {
+    moodTimer -= dt;
+    if (moodTimer <= 0) {
+      var r = Math.random();
+      mood = r < 0.3 ? "glide" : r < 0.75 ? "cruise" : "burst";
+      moodTimer = mood === "burst" ? 0.8 + Math.random() * 1.2 : 1.6 + Math.random() * 2.6;
+    }
+    var moodSpeed = mood === "glide" ? 0.55 : mood === "burst" ? 2.3 : 1.1;
+    var targetSpeed = moodSpeed + activity * 1.7;
+    speed += (targetSpeed - speed) * Math.min(1, dt * 2.2);
+    speedNorm += (clamp((speed - 0.4) / 1.9, 0, 1) - speedNorm) * Math.min(1, dt * 2.4);
 
+    var tailFreq = 0.95 * speed + 0.35;
+    var amp = 0.06 + 0.085 * Math.min(speed, 2.6);
+    wavePhase += dt * tailFreq * TAU;
+    padPhase += dt * (2.0 + speed * 1.3);
+
+    var kSpine = 180;
+    var dSpine = 22;
+    var kTail = 70;
+    var dTail = 13;
+    var turn = clamp(turnRate, -3, 3);
+
+    // 1) Travelling propulsive wave along the spine + turn S-curve.
+    for (var i = 0; i < SPINE_COUNT; i++) {
+      var f = i / (SPINE_COUNT - 1);
+      var a = amp * (0.05 + 0.95 * Math.pow(f, 1.7));
+      var ph = wavePhase - f * 2.6;
+      var ty = a * Math.sin(ph);
+      var tx = a * 0.35 * Math.sin(ph - 0.6);
+      var tz = amp * 0.2 * Math.sin(ph * 0.5 - f * 3.0);
+      ty += turn * 0.05 * (0.1 * f - 0.06 * Math.sin(f * Math.PI));
+      var s = spineBones[i].userData.spr;
+      springTo(s, tx, ty, tz, kSpine, dSpine, dt);
+      spineBones[i].rotation.set(s.x, s.y, s.z);
+    }
+
+    // 2) Tail chain: continue the wave with lag, add gravity droop.
+    for (var k = 0; k < TAIL_BONES; k++) {
+      var tf = (k + 1) / TAIL_BONES;
+      var ph2 = wavePhase - (1 + tf) * 2.6;
+      var tyy = amp * 1.55 * tf * Math.sin(ph2);
+      var tzz = (0.10 + 0.34 * (1 - speedNorm)) * (0.4 + 0.6 * tf) + 0.13 * Math.sin(ph2 - 0.5);
+      var txx = 0.4 * tf * Math.sin(ph2 - 0.4);
+      var ts = tailBones[k].userData.spr;
+      springTo(ts, txx, tyy, tzz, kTail, dTail, dt);
+      tailBones[k].rotation.set(ts.x, ts.y, ts.z);
+    }
+
+    // 3) Dorsal + anal follow-through.
+    dorsalBone.rotation.y = 0.07 * Math.sin(wavePhase * 0.9 - 0.4);
+    dorsalBone.rotation.z = 0.05 * Math.sin(t * 0.8);
+    analBone.rotation.y = 0.08 * Math.sin(wavePhase * 0.9 + 1.0);
+
+    // 4) Pectoral paddling, asymmetric when turning.
+    var turnBias = clamp(turnRate * 0.35, -0.45, 0.45);
+    var padL = 0.24 * Math.sin(padPhase) + 0.07 * Math.sin(padPhase * 0.37 + 1.2);
+    var padR = 0.24 * Math.sin(padPhase + 2.1) + 0.07 * Math.sin(padPhase * 0.53 - 0.5);
+    pecLBone.rotation.y = padL + turnBias;
+    pecLBone.rotation.z = 0.08 * Math.sin(padPhase * 1.3);
+    pecRBone.rotation.y = -padR + turnBias;
+    pecRBone.rotation.z = -0.08 * Math.sin(padPhase * 1.3);
+
+    // 5) Head leads the turn through its own spring (anticipation + settle).
+    var lead = clamp(-turnRate * 0.5, -0.4, 0.4) + 0.04 * Math.sin(t * 1.3);
+    var hs = headBone.userData.spr;
+    springTo(hs, 0, lead, 0, 130, 16, dt);
+    headBone.rotation.set(hs.x, hs.y, hs.z);
+  }
+
+  /* --------------------------------- Loop --------------------------------- */
+  function tick() {
+    var dt = Math.min(clock.getDelta(), 0.05);
+    var t = clock.elapsedTime;
+    var scrollActive = performance.now() - lastScrollAt < 160;
+    activity += ((scrollActive ? 1 : 0) - activity) * 0.07;
     var idle = !scrollActive;
     idleMix += ((idle ? 1 : 0) - idleMix) * 0.05;
 
     progress += (target - progress) * 0.08;
 
-    // Choose where the fish wants to be.
     var wantX, wantY;
     if (idle) {
       if (!wasIdle) pickWander();
@@ -616,8 +1046,8 @@
     curY += (wantY - curY) * ease;
 
     updateOrientation(dt);
+    animateSkeleton(dt, t);
 
-    // Idle micro-motion: yaw/roll shimmer + floating bob.
     var idleYaw = Math.sin(t * 0.7) * 0.06 * idleMix;
     var idleRoll = Math.sin(t * 0.9 + 1.3) * 0.05 * idleMix;
     eulerOffset.set(idleRoll, idleYaw, 0);
@@ -635,45 +1065,36 @@
     prevX = curX;
     prevY = curY;
 
-    // Drive every vertex-shader wave from the same animation clock.
-    for (var i = 0; i < animatedMaterials.length; i++) {
-      var u = animatedMaterials[i];
-      u.uTime.value = t;
-    }
-    var act = activity;
-    bodyUniform.uAmp.value = 0.12 + 0.09 * act + 0.02 * idleMix;
-    bodyUniform.uSpeed.value = 1.7 + 1.7 * act + 0.4 * idleMix;
-    for (var j = 0; j < animatedMaterials.length; j++) {
-      var fu = animatedMaterials[j];
-      if (fu.amp0 !== undefined) {
-        fu.uAmp.value = fu.amp0 * (0.8 + 0.9 * act + 0.25 * idleMix);
-        fu.uSpeed.value = fu.speed0 * (0.85 + 0.7 * act + 0.2 * idleMix);
-      }
-    }
-
     renderer.render(scene, camera);
   }
 
-  function loop(tMs) {
+  function loop() {
     if (!running) return;
-    tick(tMs / 1000);
+    tick();
     rafId = requestAnimationFrame(loop);
   }
 
   /* ------------------------------ Lifecycle ------------------------------ */
-  function renderStatic() {
-    // Reduced-motion pose: calm and still, only reflecting scroll position.
+  function poseStatic() {
     var p = pathAt(progress);
     curX = p.x;
     curY = p.y;
     fish.position.set(curX, curY, 0);
     if (!inited) {
-      targetQuat.identity();
       baseQuat.identity();
+      targetQuat.identity();
       inited = true;
     }
-    bodyUniform.uTime.value = 0;
-    for (var i = 0; i < animatedMaterials.length; i++) animatedMaterials[i].uTime.value = 0;
+    fish.quaternion.copy(baseQuat);
+    for (var i = 0; i < SPINE_COUNT; i++) {
+      var f = i / (SPINE_COUNT - 1);
+      spineBones[i].rotation.set(0, 0.12 * f * Math.sin(f * 2.4), 0);
+    }
+    for (var k = 0; k < TAIL_BONES; k++) {
+      var tf = (k + 1) / TAIL_BONES;
+      tailBones[k].rotation.set(0.1 * tf, 0.22 * tf, 0.12 * tf);
+    }
+    headBone.rotation.set(0, 0, 0);
     renderer.render(scene, camera);
   }
 
@@ -691,36 +1112,32 @@
     }
     curX = clamp(curX, -marginX, marginX);
     curY = clamp(curY, -marginY, marginY);
-    if (!running && !isDark()) renderStatic();
+    if (!running && !isDark()) poseStatic();
   }
 
   function start() {
     if (isDark()) return;
     if (reduceMotion) {
       progress = target;
-      renderStatic();
+      poseStatic();
       return;
     }
     if (running) return;
     running = true;
-    lastT = 0;
     clock.start();
-    tick(0);
+    tick();
     rafId = requestAnimationFrame(loop);
   }
-
   function stop() {
     running = false;
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
     clock.stop();
   }
-
   function sync() {
     if (isDark()) stop();
     else start();
   }
-
   function isDark() {
     return document.documentElement.classList.contains("dark");
   }
@@ -739,14 +1156,14 @@
         var mats = Array.isArray(obj.material) ? obj.material : [obj.material];
         mats.forEach(function (m) {
           if (!m) return;
-          ["map", "bumpMap", "normalMap", "emissiveMap", "roughnessMap", "metalnessMap"].forEach(function (key) {
+          ["map", "bumpMap", "normalMap", "emissiveMap", "roughnessMap", "metalnessMap", "transmissionMap"].forEach(function (key) {
             if (m[key] && m[key].dispose) m[key].dispose();
           });
           m.dispose();
         });
       }
     });
-
+    if (skeleton && skeleton.dispose) skeleton.dispose();
     if (envRT) envRT.dispose();
     renderer.dispose();
     if (renderer.forceContextLoss) renderer.forceContextLoss();
@@ -756,9 +1173,7 @@
   function onScroll() {
     lastScrollAt = performance.now();
     computeScroll();
-    if (reduceMotion && !isDark()) {
-      if (!running) renderStatic();
-    }
+    if (reduceMotion && !running && !isDark()) poseStatic();
   }
   function onMouseMove(e) {
     mouseX = (e.clientX / window.innerWidth) * 2 - 1;

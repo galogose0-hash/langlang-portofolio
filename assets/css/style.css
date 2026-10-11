@@ -38,6 +38,12 @@
     .marquee-track { animation: marquee 28s linear infinite; }
     .marquee-track:hover { animation-play-state: paused; }
 
+    /* Hero photo badges 2 & 3: hidden until the portrait is hovered/focused */
+    .hero-photo-badge { opacity: 0; transition: opacity .35s ease; }
+    #heroPortrait:hover .hero-photo-badge,
+    #heroPortrait:focus-within .hero-photo-badge { opacity: 1; }
+    @media (hover: none) { .hero-photo-badge { opacity: 1; } }
+
     /* Project mockup zoom */
     .zoom-able > * { transition: transform .8s cubic-bezier(.16,.84,.44,1); }
     .group:hover .zoom-able > * { transform: scale(1.07); }
